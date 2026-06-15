@@ -1,6 +1,7 @@
 // src/pages/sections/Achievements.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
+import { useLang } from '../context/LangContext';
 
 // مكون فرعي صغير لعمل تأثير "العدّاد" للأرقام (تم تحديثه ليستخدم requestAnimationFrame لأداء فائق النعومة)
 const Counter = ({ to, suffix = '' }) => {
@@ -11,27 +12,28 @@ const Counter = ({ to, suffix = '' }) => {
   useEffect(() => {
     if (isInView) {
       let startTime;
-      const duration = 2000; // مدة الأنيميشن (ثانيتين)
+      let rafId;
+      const duration = 2000;
 
       const animate = (timestamp) => {
         if (!startTime) startTime = timestamp;
         const progress = Math.min((timestamp - startTime) / duration, 1);
-        
         setCount(Math.ceil(progress * to));
-        
         if (progress < 1) {
-          window.requestAnimationFrame(animate);
+          rafId = window.requestAnimationFrame(animate);
         }
       };
-      
-      window.requestAnimationFrame(animate);
+
+      rafId = window.requestAnimationFrame(animate);
+      return () => cancelAnimationFrame(rafId);
     }
   }, [isInView, to]);
 
   return <span ref={ref}>{count}{suffix}</span>;
 };
 
-const Achievements = ({ lang }) => {
+const Achievements = () => {
+  const { lang } = useLang();
   const content = {
     ar: {
       tag: '// achievements',
@@ -75,7 +77,7 @@ const Achievements = ({ lang }) => {
           {current.tag}
         </div>
         <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">{current.title}</h2>
-        <p className="text-slate-400 text-lg max-w-2xl mx-auto">{current.sub}</p>
+        <p className="text-gray-500 dark:text-slate-400 text-lg max-w-2xl mx-auto">{current.sub}</p>
       </motion.div>
 
       {/* التعديل الأول: تحسين التجاوب (Responsive) للشاشات المتوسطة والكبيرة */}
@@ -87,7 +89,7 @@ const Achievements = ({ lang }) => {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: idx * 0.1 }}
-            className="bg-[#111827] border border-white/5 rounded-2xl p-6 text-center hover:border-blue-500/30 transition-colors group relative overflow-hidden"
+            className="bg-white dark:bg-[#111827] border border-gray-200 dark:border-white/5 rounded-2xl p-6 text-center hover:border-blue-400 dark:hover:border-blue-500/30 transition-colors group relative overflow-hidden shadow-sm dark:shadow-none"
           >
             {/* خط إضاءة علوي للبطاقة */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-red-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
@@ -100,8 +102,8 @@ const Achievements = ({ lang }) => {
             <div className="text-3xl font-bold text-blue-400 font-mono mb-2">
               <Counter to={item.num} suffix={item.suffix} />
             </div>
-            <div className="text-sm font-bold text-white mb-1">{item.title}</div>
-            <div className="text-xs text-slate-500">{item.sub}</div>
+            <div className="text-sm font-bold text-gray-900 dark:text-white mb-1">{item.title}</div>
+            <div className="text-xs text-gray-500 dark:text-slate-500">{item.sub}</div>
           </motion.div>
         ))}
       </div>

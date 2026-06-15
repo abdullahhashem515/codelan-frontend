@@ -1,0 +1,44 @@
+/* ── src/styles/theme.css ─────────────────────────────────────────────────────
+   Dynamic CSS variable system.  Default values = Light Mode.
+   ThemeContext injects a <style id="codelan-theme-vars"> that overrides these
+   when the admin saves custom colors.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Typography — font families (overridden at runtime by ThemeContext) */
+  --font-ar:           'IBM Plex Sans Arabic';
+  --font-en:           'Space Grotesk';
+
+  /* Brand / Accent */
+  --color-accent:      #3b82f6;
+  --color-accent-2:    #ef4444;
+  --color-accent-3:    #8b5cf6;
+
+  /* Backgrounds */
+  --color-bg-base:     #f9fafb;
+  --color-bg-card:     #ffffff;
+  --color-bg-elevated: #f3f4f6;
+
+  /* Typography */
+  --color-text-base:   #111827;
+  --color-text-muted:  #6b7280;
+
+  /* Borders */
+  --color-border:      #e5e7eb;
+}
+
+/* Dark mode defaults ─ applied when <html class="dark"> is present */
+.dark {
+  --color-accent:      #3b82f6;
+  --color-accent-2:    #ef4444;
+  --color-accent-3:    #8b5cf6;
+
+  --color-bg-base:     #050810;
+  --color-bg-card:     #0a0f1e;
+  --color-bg-elevated: #111827;
+
+  --color-text-base:   #f1f5f9;
+  --color-text-muted:  #94a3b8;
+
+  --color-border:      #1e293b;
+}

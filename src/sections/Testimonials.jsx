@@ -1,7 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useLang } from '../context/LangContext';
 
-const Testimonials = ({ lang }) => {
+const Testimonials = () => {
+  const { lang } = useLang();
   const content = {
     ar: {
       tag: '// testimonials',
@@ -46,7 +48,7 @@ const Testimonials = ({ lang }) => {
   const current = content[lang];
 
   return (
-    <section id="testimonials" className="py-24 bg-[#0a0f1e]">
+    <section id="testimonials" className="py-24 bg-gray-100 dark:bg-[#0a0f1e]">
       <div className="max-w-7xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -58,7 +60,7 @@ const Testimonials = ({ lang }) => {
             {current.tag}
           </div>
           <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">{current.title}</h2>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">{current.sub}</p>
+          <p className="text-gray-500 dark:text-slate-400 text-lg max-w-2xl mx-auto">{current.sub}</p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -69,7 +71,7 @@ const Testimonials = ({ lang }) => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: idx * 0.15 }}
-              className="bg-[#0d1428] border border-white/5 rounded-2xl p-8 hover:border-blue-500/30 transition-all hover:-translate-y-1 relative"
+              className="bg-white dark:bg-[#0d1428] border border-gray-200 dark:border-white/5 rounded-2xl p-8 hover:border-blue-400 dark:hover:border-blue-500/30 transition-all hover:-translate-y-1 relative shadow-sm dark:shadow-none"
             >
               {/* علامة الاقتباس المائية */}
               <div className="absolute top-6 left-6 text-6xl text-blue-500/10 font-serif leading-none rotate-180">"</div>
@@ -77,7 +79,7 @@ const Testimonials = ({ lang }) => {
               <div className="flex gap-1 text-yellow-400 text-sm mb-6">
                 ★★★★★
               </div>
-              <p className="text-slate-300 leading-relaxed mb-8 relative z-10 text-sm">
+              <p className="text-gray-700 dark:text-slate-300 leading-relaxed mb-8 relative z-10 text-sm">
                 "{review.text}"
               </p>
               <div className="flex items-center gap-4">
@@ -85,8 +87,8 @@ const Testimonials = ({ lang }) => {
                   {review.initial}
                 </div>
                 <div>
-                  <div className="font-bold text-white text-sm">{review.name}</div>
-                  <div className="text-xs text-slate-500">{review.role}</div>
+                  <div className="font-bold text-gray-900 dark:text-white text-sm">{review.name}</div>
+                  <div className="text-xs text-gray-500 dark:text-slate-500">{review.role}</div>
                 </div>
               </div>
             </motion.div>

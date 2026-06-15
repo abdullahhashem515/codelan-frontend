@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import { Plus, Pencil, Trash2, GripVertical, X } from 'lucide-react';
+import { useLang } from '../../context/LangContext';
 import {
   DndContext,
   closestCenter,
@@ -22,8 +23,9 @@ import { CSS } from '@dnd-kit/utilities';
 
 // ─── Shared Style ─────────────────────────────────────────────────────────
 const inputCls =
-  'w-full bg-[#111827] border border-white/10 rounded-xl px-4 py-3 text-white ' +
-  'placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all';
+  'w-full bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 ' +
+  'text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 ' +
+  'focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all';
 
 const toastStyle = {
   style: { background: '#111827', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
@@ -53,37 +55,41 @@ const SortableStep = ({ step, index, onEdit, onDelete, ar }) => {
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-[#0a0f1e] border ${isDragging ? 'border-blue-500 shadow-xl shadow-blue-900/20' : 'border-white/5'} rounded-2xl p-5 flex items-start gap-4 transition-colors hover:border-white/10`}
+      className={`bg-white dark:bg-[#0a0f1e] border ${
+        isDragging
+          ? 'border-blue-500 shadow-xl shadow-blue-900/20'
+          : 'border-gray-200 dark:border-white/5'
+      } rounded-2xl p-5 flex items-start gap-4 transition-colors hover:border-gray-300 dark:hover:border-white/10 shadow-sm dark:shadow-none`}
     >
       {/* مقبض السحب */}
       <div
         {...attributes}
         {...listeners}
-        className="mt-2 text-slate-500 hover:text-white cursor-grab active:cursor-grabbing p-1 bg-white/5 rounded-lg"
+        className="mt-2 text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-white cursor-grab active:cursor-grabbing p-1 bg-gray-100 dark:bg-white/5 rounded-lg"
         title={ar ? 'اسحب للترتيب' : 'Drag to reorder'}
       >
         <GripVertical size={20} />
       </div>
 
-      <div className="w-12 h-12 rounded-xl bg-[#111827] border border-white/5 flex items-center justify-center text-2xl flex-shrink-0">
+      <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-[#111827] border border-gray-200 dark:border-white/5 flex items-center justify-center text-2xl flex-shrink-0">
         {step.icon}
       </div>
 
       <div className="flex-1">
         <div className="flex items-center gap-3 mb-1">
-          <span className="text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
+          <span className="text-xs font-bold text-blue-500 dark:text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
             {ar ? 'خطوة' : 'Step'} {index + 1}
           </span>
-          <h3 className="text-lg font-bold text-white">{ar ? step.titleAr : step.titleEn}</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{ar ? step.titleAr : step.titleEn}</h3>
         </div>
-        <p className="text-sm text-slate-400 mt-2">{ar ? step.descAr : step.descEn}</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mt-2">{ar ? step.descAr : step.descEn}</p>
       </div>
 
       <div className="flex items-center gap-2 flex-shrink-0">
-        <button onClick={() => onEdit(step)} className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors">
+        <button onClick={() => onEdit(step)} className="p-2 text-gray-400 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors">
           <Pencil size={18} />
         </button>
-        <button onClick={() => onDelete(step.id)} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
+        <button onClick={() => onDelete(step.id)} className="p-2 text-gray-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
           <Trash2 size={18} />
         </button>
       </div>
@@ -92,20 +98,19 @@ const SortableStep = ({ step, index, onEdit, onDelete, ar }) => {
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────
-const ManageMethodology = ({ lang }) => {
+const ManageMethodology = () => {
+  const { lang } = useLang();
   const ar = lang === 'ar';
   const [steps, setSteps] = useState(INITIAL_STEPS);
-  
-  // Modal states
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
-  
+
   const [formData, setFormData] = useState({
     id: '', icon: '', titleAr: '', titleEn: '', descAr: '', descEn: ''
   });
 
-  // إعدادات حساسات السحب والإفلات
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -163,12 +168,12 @@ const ManageMethodology = ({ lang }) => {
       <Toaster position="top-center" />
 
       {/* الترويسة */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0a0f1e] p-6 rounded-2xl border border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#0a0f1e] p-6 rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm dark:shadow-none">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {ar ? 'منهجية العمل' : 'Methodology'}
           </h1>
-          <p className="text-slate-400 text-sm">
+          <p className="text-gray-500 dark:text-slate-400 text-sm">
             {ar ? 'أضف ورتب خطوات العمل التي يتبعها فريقك (يمكنك السحب لإعادة الترتيب)' : 'Add and reorder the workflow steps your team follows (drag to reorder)'}
           </p>
         </div>
@@ -193,42 +198,47 @@ const ManageMethodology = ({ lang }) => {
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full max-w-lg bg-[#0a0f1e] border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-              <div className="flex items-center justify-between p-6 border-b border-white/5">
-                <h3 className="text-xl font-bold text-white">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-white/5">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                   {modalMode === 'add' ? (ar ? 'إضافة خطوة' : 'Add Step') : (ar ? 'تعديل خطوة' : 'Edit Step')}
                 </h3>
-                <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white p-1 bg-white/5 rounded-lg">
+                <button onClick={() => setIsModalOpen(false)} className="text-gray-400 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white p-1 bg-gray-100 dark:bg-white/5 rounded-lg">
                   <X size={20} />
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">
                     {ar ? 'الأيقونة (إيموجي)' : 'Icon (Emoji)'}
                   </label>
                   <input type="text" name="icon" value={formData.icon} onChange={(e) => setFormData({...formData, icon: e.target.value})} className={inputCls} placeholder="🚀" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">{ar ? 'العنوان (عربي)' : 'Title (AR)'}</label>
+                    <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">{ar ? 'العنوان (عربي)' : 'Title (AR)'}</label>
                     <input type="text" required value={formData.titleAr} onChange={(e) => setFormData({...formData, titleAr: e.target.value})} className={inputCls} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">{ar ? 'العنوان (إنجليزي)' : 'Title (EN)'}</label>
+                    <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">{ar ? 'العنوان (إنجليزي)' : 'Title (EN)'}</label>
                     <input type="text" required value={formData.titleEn} onChange={(e) => setFormData({...formData, titleEn: e.target.value})} className={inputCls} dir="ltr" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">{ar ? 'الوصف (عربي)' : 'Description (AR)'}</label>
-                  <textarea rows="2" required value={formData.descAr} onChange={(e) => setFormData({...formData, descAr: e.target.value})} className={inputCls} />
+                  <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">{ar ? 'الوصف (عربي)' : 'Description (AR)'}</label>
+                  <textarea rows="2" required value={formData.descAr} onChange={(e) => setFormData({...formData, descAr: e.target.value})} className={`${inputCls} resize-none`} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">{ar ? 'الوصف (إنجليزي)' : 'Description (EN)'}</label>
-                  <textarea rows="2" required value={formData.descEn} onChange={(e) => setFormData({...formData, descEn: e.target.value})} className={inputCls} dir="ltr" />
+                  <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">{ar ? 'الوصف (إنجليزي)' : 'Description (EN)'}</label>
+                  <textarea rows="2" required value={formData.descEn} onChange={(e) => setFormData({...formData, descEn: e.target.value})} className={`${inputCls} resize-none`} dir="ltr" />
                 </div>
                 <div className="flex justify-end gap-3 mt-6">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10 transition-colors">
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-xl text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
                     {ar ? 'إلغاء' : 'Cancel'}
                   </button>
                   <button type="submit" className="px-5 py-2.5 rounded-xl text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/20 font-medium">
@@ -245,14 +255,19 @@ const ManageMethodology = ({ lang }) => {
       <AnimatePresence>
         {deleteConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="w-full max-w-sm bg-[#0a0f1e] border border-red-500/20 rounded-2xl shadow-2xl p-6 text-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-sm bg-white dark:bg-[#0a0f1e] border border-red-500/20 rounded-2xl shadow-2xl p-6 text-center"
+            >
               <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4">
                 <Trash2 size={32} />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">{ar ? 'تأكيد الحذف' : 'Confirm Delete'}</h3>
-              <p className="text-slate-400 mb-6">{ar ? 'هل أنت متأكد من حذف هذه الخطوة؟' : 'Are you sure you want to delete this step?'}</p>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{ar ? 'تأكيد الحذف' : 'Confirm Delete'}</h3>
+              <p className="text-gray-500 dark:text-slate-400 mb-6">{ar ? 'هل أنت متأكد من حذف هذه الخطوة؟' : 'Are you sure you want to delete this step?'}</p>
               <div className="flex justify-center gap-3">
-                <button onClick={() => setDeleteConfirm(null)} className="px-5 py-2.5 rounded-xl text-slate-300 bg-white/5 hover:bg-white/10 transition-colors">
+                <button onClick={() => setDeleteConfirm(null)} className="px-5 py-2.5 rounded-xl text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
                   {ar ? 'تراجع' : 'Cancel'}
                 </button>
                 <button onClick={() => confirmDelete(deleteConfirm)} className="px-5 py-2.5 rounded-xl text-white bg-red-600 hover:bg-red-700 transition-colors shadow-lg shadow-red-900/20">

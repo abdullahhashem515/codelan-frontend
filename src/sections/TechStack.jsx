@@ -1,7 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useLang } from '../context/LangContext';
 
-const TechStack = ({ lang }) => {
+const TechStack = () => {
+  const { lang } = useLang();
   const content = {
     ar: {
       tag: '// tech-stack',
@@ -101,7 +103,7 @@ const TechStack = ({ lang }) => {
           {current.tag}
         </div>
         <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">{current.title}</h2>
-        <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
+        <p className="text-gray-500 dark:text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
           {current.sub}
         </p>
       </motion.div>
@@ -118,7 +120,7 @@ const TechStack = ({ lang }) => {
           <motion.div 
             key={idx} 
             variants={itemVariants}
-            className="bg-[#111827] border border-[#3b82f6]/15 rounded-2xl p-6 transition-colors duration-300 hover:border-[#3b82f6]/40 group"
+            className="bg-white dark:bg-[#111827] border border-blue-200 dark:border-[#3b82f6]/15 rounded-2xl p-6 transition-colors duration-300 hover:border-blue-400 dark:hover:border-[#3b82f6]/40 group shadow-sm dark:shadow-none"
           >
             <h3 className="text-sm font-mono text-blue-400 uppercase tracking-wider mb-5">
               {cat.title}
@@ -127,7 +129,7 @@ const TechStack = ({ lang }) => {
               {cat.items.map((tech, tIdx) => (
                 <div 
                   key={tIdx} 
-                  className="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-slate-300 transition-all duration-200 group-hover:bg-white/[0.05] hover:!bg-blue-500/10 hover:!border-blue-500/30 hover:!text-blue-300 cursor-default"
+                  className="flex items-center gap-2 bg-gray-100 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-600 dark:text-slate-300 transition-all duration-200 hover:!bg-blue-50 dark:hover:!bg-blue-500/10 hover:!border-blue-400 dark:hover:!border-blue-500/30 hover:!text-blue-600 dark:hover:!text-blue-300 cursor-default"
                 >
                   {/* النقطة الملونة */}
                   <span className={`w-1.5 h-1.5 rounded-full ${tech.dot}`}></span>

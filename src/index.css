@@ -20,8 +20,8 @@
     --muted2: #64748b;
     
     /* استيراد الخطوط */
-    --font-ar: 'IBM Plex Sans Arabic', sans-serif;
-    --font-en: 'Space Grotesk', sans-serif;
+    --font-ar: 'IBM Plex Sans Arabic';
+    --font-en: 'Space Grotesk';
     --mono: 'JetBrains Mono', monospace;
   }
 
@@ -33,7 +33,6 @@
     font-family: var(--font-ar);
     overflow-x: hidden;
     line-height: 1.7;
-    direction: rtl; /* تفعيل اللغة العربية افتراضياً */
   }
   
   html { 

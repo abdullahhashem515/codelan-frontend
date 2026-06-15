@@ -1,11 +1,13 @@
 // src/pages/admin/ManageTechStack.jsx
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, Pencil, Trash2, ChevronDown, Layers, Code2, X 
+import {
+  Plus, Pencil, Trash2, ChevronDown, Layers, Code2, X
 } from 'lucide-react';
+import { useLang } from '../../context/LangContext';
 
-const ManageTechStack = ({ lang }) => {
+const ManageTechStack = () => {
+  const { lang } = useLang();
   const isAr = lang === 'ar';
 
   // 1. البيانات الوهمية (Mock Data) مهيأة لتتوافق مع نهج Headless CMS
@@ -48,7 +50,7 @@ const ManageTechStack = ({ lang }) => {
   const [modalConfig, setModalConfig] = useState({ isOpen: false, mode: '', data: null, catId: null });
 
   // ستايل الحقول النصية الموحد
-  const inputCls = 'w-full bg-[#050810] border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all';
+  const inputCls = 'w-full bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all';
 
   // دوال التحكم
   const toggleAccordion = (id) => {
@@ -82,11 +84,11 @@ const ManageTechStack = ({ lang }) => {
       {/* الترويسة */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Layers className="text-blue-500 w-7 h-7" />
             {isAr ? 'التقنيات والتصنيفات (Tech Stack)' : 'Manage Tech Stack'}
           </h1>
-          <p className="text-slate-400 mt-1">
+          <p className="text-gray-500 dark:text-slate-400 mt-1">
             {isAr ? 'إدارة تصنيفات التقنيات والأدوات المستخدمة في مشاريعكم' : 'Manage your technology categories and tools'}
           </p>
         </div>
@@ -106,12 +108,12 @@ const ManageTechStack = ({ lang }) => {
           const isExpanded = expandedId === cat.id;
 
           return (
-            <div key={cat.id} className="bg-[#111827] border border-white/5 rounded-2xl overflow-hidden shadow-lg">
+            <div key={cat.id} className="bg-white dark:bg-[#111827] border border-gray-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm dark:shadow-lg">
               
               {/* هيدر التصنيف (الزر الذي يفتح ويغلق الأكورديون) */}
               <div 
                 onClick={() => toggleAccordion(cat.id)}
-                className="p-5 flex items-center justify-between cursor-pointer hover:bg-white/[0.02] transition-colors"
+                className="p-5 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
               >
                 <div className="flex items-center gap-4">
                   <motion.div 
@@ -120,7 +122,7 @@ const ManageTechStack = ({ lang }) => {
                   >
                     <ChevronDown className="text-slate-400 w-5 h-5" />
                   </motion.div>
-                  <h2 className="text-lg font-bold text-white">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                     {isAr ? cat.titleAr : cat.titleEn}
                   </h2>
                   <span className="bg-blue-500/10 text-blue-400 text-xs py-1 px-2.5 rounded-full font-mono">
@@ -149,7 +151,7 @@ const ManageTechStack = ({ lang }) => {
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
-                    <div className="p-5 border-t border-white/5 bg-[#050810]/50">
+                    <div className="p-5 border-t border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-[#050810]/50">
                       
                       {/* زر إضافة تقنية داخل التصنيف */}
                       <div className="flex justify-end mb-4">
@@ -165,10 +167,10 @@ const ManageTechStack = ({ lang }) => {
                       {/* شبكة التقنيات */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {cat.techs.map((tech) => (
-                          <div key={tech.id} className="bg-[#111827] border border-white/5 p-4 rounded-xl flex items-center justify-between group hover:border-white/10 transition-all">
+                          <div key={tech.id} className="bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/5 p-4 rounded-xl flex items-center justify-between group hover:border-gray-300 dark:hover:border-white/10 transition-all">
                             <div className="flex items-center gap-3">
                               <span className="text-2xl">{tech.icon}</span>
-                              <span className="font-medium text-slate-200">{tech.name}</span>
+                              <span className="font-medium text-gray-700 dark:text-slate-200">{tech.name}</span>
                             </div>
                             
                             <div className="opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
@@ -183,7 +185,7 @@ const ManageTechStack = ({ lang }) => {
                         ))}
 
                         {cat.techs.length === 0 && (
-                          <div className="col-span-full py-6 text-center text-slate-500 border border-dashed border-white/10 rounded-xl">
+                          <div className="col-span-full py-6 text-center text-gray-400 dark:text-slate-500 border border-dashed border-gray-200 dark:border-white/10 rounded-xl">
                             <Code2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
                             {isAr ? 'لا توجد تقنيات مضافة في هذا التصنيف' : 'No technologies added in this category'}
                           </div>
@@ -212,10 +214,10 @@ const ManageTechStack = ({ lang }) => {
               initial={{ scale: 0.95, opacity: 0 }} 
               animate={{ scale: 1, opacity: 1 }} 
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative bg-[#111827] border border-white/10 w-full max-w-md rounded-2xl p-6 shadow-2xl"
+              className="relative bg-white dark:bg-[#111827] border border-gray-200 dark:border-white/10 w-full max-w-md rounded-2xl p-6 shadow-2xl"
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-white">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                   {modalConfig.mode.includes('Cat') 
                     ? (isAr ? 'إدارة التصنيف' : 'Manage Category') 
                     : (isAr ? 'إدارة التقنية' : 'Manage Technology')}
@@ -230,29 +232,29 @@ const ManageTechStack = ({ lang }) => {
                 {modalConfig.mode.includes('Cat') ? (
                   <>
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">{isAr ? 'العنوان (عربي)' : 'Title (AR)'}</label>
+                      <label className="block text-sm text-gray-500 dark:text-slate-400 mb-2">{isAr ? 'العنوان (عربي)' : 'Title (AR)'}</label>
                       <input type="text" className={inputCls} defaultValue={modalConfig.data?.titleAr || ''} />
                     </div>
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">{isAr ? 'العنوان (إنجليزي)' : 'Title (EN)'}</label>
+                      <label className="block text-sm text-gray-500 dark:text-slate-400 mb-2">{isAr ? 'العنوان (إنجليزي)' : 'Title (EN)'}</label>
                       <input type="text" className={inputCls} defaultValue={modalConfig.data?.titleEn || ''} />
                     </div>
                   </>
                 ) : (
                   <>
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">{isAr ? 'اسم التقنية' : 'Tech Name'}</label>
+                      <label className="block text-sm text-gray-500 dark:text-slate-400 mb-2">{isAr ? 'اسم التقنية' : 'Tech Name'}</label>
                       <input type="text" className={inputCls} defaultValue={modalConfig.data?.name || ''} />
                     </div>
                     <div>
-                      <label className="block text-sm text-slate-400 mb-2">{isAr ? 'الأيقونة (Emoji)' : 'Icon (Emoji)'}</label>
+                      <label className="block text-sm text-gray-500 dark:text-slate-400 mb-2">{isAr ? 'الأيقونة (Emoji)' : 'Icon (Emoji)'}</label>
                       <input type="text" className={inputCls} defaultValue={modalConfig.data?.icon || ''} />
                     </div>
                   </>
                 )}
 
                 <div className="pt-4 flex justify-end gap-3">
-                  <button type="button" onClick={closeModal} className="px-5 py-2.5 text-slate-300 hover:bg-white/5 rounded-xl transition-colors">
+                  <button type="button" onClick={closeModal} className="px-5 py-2.5 text-gray-500 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors">
                     {isAr ? 'إلغاء' : 'Cancel'}
                   </button>
                   <button type="submit" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all">

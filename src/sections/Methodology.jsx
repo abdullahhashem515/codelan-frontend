@@ -1,7 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useLang } from '../context/LangContext';
 
-const Methodology = ({ lang }) => {
+const Methodology = () => {
+  const { lang } = useLang();
   const content = {
     ar: {
       tag: '// methodology',
@@ -82,7 +84,7 @@ const Methodology = ({ lang }) => {
   const current = content[lang];
 
   return (
-    <section id="methodology" className="py-24 bg-[#0a0f1e] relative overflow-hidden">
+    <section id="methodology" className="py-24 bg-gray-100 dark:bg-[#0a0f1e] relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         
         {/* عنوان القسم */}
@@ -96,7 +98,7 @@ const Methodology = ({ lang }) => {
             {current.tag}
           </div>
           <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">{current.title}</h2>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">{current.sub}</p>
+          <p className="text-gray-500 dark:text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">{current.sub}</p>
         </motion.div>
 
         <div className="relative">
@@ -114,15 +116,15 @@ const Methodology = ({ lang }) => {
                 className={`flex flex-col lg:flex-row items-center justify-between w-full mb-8 lg:mb-16 ${idx % 2 === 0 ? 'lg:flex-row-reverse' : ''}`}
               >
                 {/* المحتوى */}
-                <div className="w-full lg:w-[45%] p-8 bg-[#111827] border border-white/5 rounded-2xl hover:border-blue-500/30 transition-colors group">
+                <div className="w-full lg:w-[45%] p-8 bg-white dark:bg-[#111827] border border-gray-200 dark:border-white/5 rounded-2xl hover:border-blue-400 dark:hover:border-blue-500/30 transition-colors group shadow-sm dark:shadow-none">
                   <div className="text-blue-500 font-mono text-sm mb-2">STEP {step.id}</div>
-                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-blue-400 transition-colors">{step.title}</h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">{step.desc}</p>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{step.title}</h3>
+                  <p className="text-gray-500 dark:text-slate-400 text-sm leading-relaxed">{step.desc}</p>
                 </div>
 
                 {/* الدائرة المركزية (الأيقونة) */}
                 <div className="relative z-10 my-6 lg:my-0">
-                  <div className="w-12 h-12 rounded-full bg-[#050810] border-2 border-blue-500 flex items-center justify-center text-xl shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-[#050810] border-2 border-blue-500 flex items-center justify-center text-xl shadow-[0_0_20px_rgba(59,130,246,0.3)]">
                     {step.icon}
                   </div>
                 </div>

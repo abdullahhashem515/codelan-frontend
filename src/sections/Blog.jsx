@@ -1,8 +1,10 @@
 // src/pages/sections/Blog.jsx
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useLang } from '../context/LangContext';
 
-const Blog = ({ lang }) => {
+const Blog = () => {
+  const { lang } = useLang();
   const content = {
     ar: {
       tag: '// blog',
@@ -113,7 +115,7 @@ const Blog = ({ lang }) => {
           {current.tag}
         </div>
         <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">{current.title}</h2>
-        <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">{current.sub}</p>
+        <p className="text-gray-500 dark:text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">{current.sub}</p>
       </motion.div>
 
       {/* حاوية البطاقات مع استخدام variants */}
@@ -128,7 +130,7 @@ const Blog = ({ lang }) => {
           <motion.div
             key={post.id}
             variants={itemVariants}
-            className="flex flex-col bg-[#111827] border border-[#3b82f6]/15 rounded-2xl overflow-hidden group hover:border-[#3b82f6]/40 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] cursor-pointer"
+            className="flex flex-col bg-white dark:bg-[#111827] border border-blue-200 dark:border-[#3b82f6]/15 rounded-2xl overflow-hidden group hover:border-blue-400 dark:hover:border-[#3b82f6]/40 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] cursor-pointer shadow-sm dark:shadow-none"
           >
             {/* صورة غلاف المقال */}
             <div className={`h-48 w-full bg-gradient-to-br ${post.gradient} flex items-center justify-center text-5xl relative overflow-hidden shrink-0`}>
@@ -146,18 +148,18 @@ const Blog = ({ lang }) => {
                   {post.category}
                 </span>
                 
-                <h3 className="text-lg font-bold text-white mb-3 line-clamp-2 group-hover:text-blue-400 transition-colors leading-snug">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-snug">
                   {post.title}
                 </h3>
                 
-                <p className="text-slate-400 text-sm leading-relaxed mb-6 line-clamp-3">
+                <p className="text-gray-500 dark:text-slate-400 text-sm leading-relaxed mb-6 line-clamp-3">
                   {post.desc}
                 </p>
               </div>
 
               {/* بيانات النشر وزر القراءة (دائماً في الأسفل بفضل flex-grow) */}
-              <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-slate-500 font-mono">
+              <div className="mt-auto pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-slate-500 font-mono">
                   <span aria-hidden="true">⏱️</span>
                   <span>{post.time}</span>
                   <span>·</span>

@@ -1,12 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { useLang } from '../context/LangContext';
 
-const Portfolio = ({ lang }) => {
+const Portfolio = () => {
+  const { lang } = useLang();
+  const navigate = useNavigate();
+
   const content = {
     ar: {
       tag: '// portfolio',
       title: 'حالات الدراسة والأعمال',
       sub: 'مشاريع حقيقية، نتائج قابلة للقياس. كل مشروع يحكي قصة مشكلة تم حلها بذكاء هندسي.',
+      viewDetails: 'عرض التفاصيل',
       projects: [
         {
           id: 1,
@@ -56,6 +62,7 @@ const Portfolio = ({ lang }) => {
       tag: '// portfolio',
       title: 'Case Studies & Work',
       sub: 'Real projects, measurable results. Every project tells the story of a problem solved with engineering intelligence.',
+      viewDetails: 'View Details',
       projects: [
         {
           id: 1,
@@ -107,26 +114,23 @@ const Portfolio = ({ lang }) => {
 
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.2 }
-    }
+    visible: { opacity: 1, transition: { staggerChildren: 0.2 } }
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 40 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } }
   };
 
   return (
-    <section id="portfolio" className="py-24 w-full bg-[#0a0f1e] relative">
+    <section id="portfolio" className="py-24 w-full bg-gray-100 dark:bg-[#0a0f1e] relative">
       <div className="max-w-7xl mx-auto px-6">
-        
+
         {/* عنوان القسم */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
+          viewport={{ once: true, margin: '-100px' }}
           transition={{ duration: 0.5 }}
           className="text-center flex flex-col items-center mb-16"
         >
@@ -134,26 +138,27 @@ const Portfolio = ({ lang }) => {
             {current.tag}
           </div>
           <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">{current.title}</h2>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
+          <p className="text-gray-500 dark:text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">
             {current.sub}
           </p>
         </motion.div>
 
         {/* شبكة المشاريع */}
-        <motion.div 
+        <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
+          viewport={{ once: true, margin: '-50px' }}
           className="grid grid-cols-1 lg:grid-cols-3 gap-8"
         >
           {current.projects.map((project) => (
-            <motion.div 
-              key={project.id} 
+            <motion.div
+              key={project.id}
               variants={itemVariants}
-              className="bg-[#0d1428] border border-[#3b82f6]/15 rounded-2xl overflow-hidden group hover:border-[#3b82f6]/40 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_30px_80px_rgba(0,0,0,0.5)]"
+              onClick={() => navigate(`/projects/${project.id}`)}
+              className="bg-white dark:bg-[#0d1428] border border-blue-200 dark:border-[#3b82f6]/15 rounded-2xl overflow-hidden group hover:border-blue-400 dark:hover:border-[#3b82f6]/40 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_30px_80px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_30px_80px_rgba(0,0,0,0.5)] cursor-pointer"
             >
-              {/* صورة تشويقية مجردة للمشروع (Abstract Thumbnail) */}
+              {/* صورة تشويقية مجردة للمشروع */}
               <div className={`h-48 w-full bg-gradient-to-br ${project.thumbGradient} relative overflow-hidden flex items-center justify-center`}>
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0d1428]/80 z-10"></div>
                 <svg width="120" height="80" viewBox="0 0 120 80" className="opacity-50 relative z-0 group-hover:scale-110 transition-transform duration-700">
@@ -167,36 +172,43 @@ const Portfolio = ({ lang }) => {
               {/* محتوى البطاقة */}
               <div className="p-6">
                 <div className="mb-3">
-                  <span className="font-mono text-xs text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded">
+                  <span className="font-mono text-xs text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded">
                     {project.category}
                   </span>
                 </div>
-                
-                <h3 className="text-xl font-bold text-white mb-3 line-clamp-1 group-hover:text-blue-400 transition-colors">
+
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                   {project.title}
                 </h3>
-                
-                <p className="text-slate-400 text-sm leading-relaxed mb-6 line-clamp-3">
+
+                <p className="text-gray-500 dark:text-slate-400 text-sm leading-relaxed mb-6 line-clamp-3">
                   {project.desc}
                 </p>
 
-                {/* مقاييس النجاح (Metrics) */}
-                <div className="flex gap-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl mb-6">
+                {/* مقاييس النجاح */}
+                <div className="flex gap-4 p-4 bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/5 rounded-xl mb-6">
                   {project.metrics.map((metric, i) => (
                     <div key={i} className="flex-1 text-center">
-                      <div className="font-mono text-lg font-bold text-blue-400 mb-1">{metric.val}</div>
-                      <div className="text-[10px] text-slate-500 uppercase tracking-wider">{metric.lbl}</div>
+                      <div className="font-mono text-lg font-bold text-blue-500 dark:text-blue-400 mb-1">{metric.val}</div>
+                      <div className="text-[10px] text-gray-400 dark:text-slate-500 uppercase tracking-wider">{metric.lbl}</div>
                     </div>
                   ))}
                 </div>
 
-                {/* المكدس التقني (Tech Stack) */}
+                {/* المكدس التقني */}
                 <div className="flex flex-wrap gap-2">
                   {project.stack.map((tech, i) => (
-                    <span key={i} className="text-xs text-slate-300 bg-[#1a2540] px-2 py-1 rounded-md border border-[#3b82f6]/10">
+                    <span key={i} className="text-xs text-gray-600 dark:text-slate-300 bg-blue-50 dark:bg-[#1a2540] px-2 py-1 rounded-md border border-blue-200 dark:border-[#3b82f6]/10">
                       {tech}
                     </span>
                   ))}
+                </div>
+
+                {/* زر التفاصيل */}
+                <div className="mt-5 pt-4 border-t border-gray-100 dark:border-white/5">
+                  <span className="text-sm font-semibold text-blue-500 dark:text-blue-400 group-hover:underline">
+                    {current.viewDetails} {lang === 'ar' ? '←' : '→'}
+                  </span>
                 </div>
               </div>
             </motion.div>

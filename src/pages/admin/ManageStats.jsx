@@ -3,12 +3,14 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Eye, EyeOff } from 'lucide-react';
+import { useLang } from '../../context/LangContext';
 
 // ─── Shared style ─────────────────────────────────────────────────────────────
 
 const inputCls =
-  'w-full bg-[#111827] border border-white/10 rounded-xl px-4 py-3 text-white ' +
-  'placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all';
+  'w-full bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 ' +
+  'text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 ' +
+  'focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all';
 
 const toastStyle = {
   style: { background: '#111827', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
@@ -29,18 +31,17 @@ const EMPTY_FORM = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-const ManageStats = ({ lang }) => {
+const ManageStats = () => {
+  const { lang } = useLang();
   const ar = lang === 'ar';
 
   const [stats, setStats]               = useState(INITIAL_STATS);
   const [isModalOpen, setIsModalOpen]   = useState(false);
-  const [modalMode, setModalMode]       = useState('add');   // 'add' | 'edit'
+  const [modalMode, setModalMode]       = useState('add');
   const [formData, setFormData]         = useState(EMPTY_FORM);
-  const [deleteConfirm, setDeleteConfirm] = useState(null);  // id of row pending delete
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const updateForm = (key, val) => setFormData(prev => ({ ...prev, [key]: val }));
-
-  // ── CRUD helpers ──────────────────────────────────────────────────────────
 
   const openAdd = () => {
     setFormData(EMPTY_FORM);
@@ -79,8 +80,6 @@ const ManageStats = ({ lang }) => {
   const toggleActive = (id) =>
     setStats(prev => prev.map(s => s.id === id ? { ...s, isActive: !s.isActive } : s));
 
-  // ── Reorder helpers ───────────────────────────────────────────────────────
-
   const swap = (arr, i, j) => {
     const next = [...arr];
     [next[i], next[j]] = [next[j], next[i]];
@@ -90,8 +89,6 @@ const ManageStats = ({ lang }) => {
   const moveUp   = (idx) => { if (idx > 0)                  setStats(prev => swap(prev, idx, idx - 1)); };
   const moveDown = (idx) => { if (idx < stats.length - 1)   setStats(prev => swap(prev, idx, idx + 1)); };
 
-  // ── Render ────────────────────────────────────────────────────────────────
-
   return (
     <div>
       <Toaster position="top-center" />
@@ -99,10 +96,10 @@ const ManageStats = ({ lang }) => {
       {/* Page header */}
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
             {ar ? 'إدارة الإحصائيات' : 'Manage Stats'}
           </h1>
-          <p className="text-slate-500 text-sm">
+          <p className="text-gray-500 dark:text-slate-500 text-sm">
             {ar
               ? 'الأرقام والإحصائيات التي تظهر في قسم Hero من الموقع'
               : 'Numbers shown in the Hero section of the landing page'}
@@ -122,7 +119,7 @@ const ManageStats = ({ lang }) => {
       {/* Stats list */}
       <div className="space-y-3">
         {stats.length === 0 ? (
-          <div className="py-16 border-2 border-dashed border-white/10 rounded-2xl text-center text-slate-600">
+          <div className="py-16 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-2xl text-center text-gray-400 dark:text-slate-600">
             {ar ? 'لا توجد إحصائيات. أضف واحدة.' : 'No stats yet. Add one.'}
           </div>
         ) : (
@@ -135,9 +132,11 @@ const ManageStats = ({ lang }) => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ layout: { duration: 0.2 } }}
-                className={`bg-[#0a0f1e] border rounded-2xl px-5 py-4
-                            flex flex-wrap items-center gap-4 transition-opacity ${
-                              stat.isActive ? 'border-white/10' : 'border-white/5 opacity-50'
+                className={`bg-white dark:bg-[#0a0f1e] border rounded-2xl px-5 py-4
+                            flex flex-wrap items-center gap-4 transition-opacity shadow-sm dark:shadow-none ${
+                              stat.isActive
+                                ? 'border-gray-200 dark:border-white/10'
+                                : 'border-gray-200 dark:border-white/5 opacity-50'
                             }`}
               >
                 {/* Up / Down buttons */}
@@ -145,7 +144,7 @@ const ManageStats = ({ lang }) => {
                   <button
                     onClick={() => moveUp(idx)}
                     disabled={idx === 0}
-                    className="p-1 text-slate-600 hover:text-slate-300
+                    className="p-1 text-gray-400 dark:text-slate-600 hover:text-gray-600 dark:hover:text-slate-300
                                disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronUp size={15} />
@@ -153,7 +152,7 @@ const ManageStats = ({ lang }) => {
                   <button
                     onClick={() => moveDown(idx)}
                     disabled={idx === stats.length - 1}
-                    className="p-1 text-slate-600 hover:text-slate-300
+                    className="p-1 text-gray-400 dark:text-slate-600 hover:text-gray-600 dark:hover:text-slate-300
                                disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronDown size={15} />
@@ -161,18 +160,18 @@ const ManageStats = ({ lang }) => {
                 </div>
 
                 {/* Preview card */}
-                <div className="w-16 h-16 rounded-2xl bg-[#111827] border border-white/10
+                <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-[#111827] border border-gray-200 dark:border-white/10
                                 flex flex-col items-center justify-center gap-0.5 flex-shrink-0">
                   <span className="text-xl leading-none">{stat.icon}</span>
-                  <span className="text-blue-400 font-mono font-bold text-xs leading-none">
+                  <span className="text-blue-500 dark:text-blue-400 font-mono font-bold text-xs leading-none">
                     {stat.prefix}{stat.value}{stat.suffix}
                   </span>
                 </div>
 
                 {/* Labels */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-medium text-sm">{stat.labelAr}</p>
-                  <p className="text-slate-500 text-xs font-english">{stat.labelEn}</p>
+                  <p className="text-gray-900 dark:text-white font-medium text-sm">{stat.labelAr}</p>
+                  <p className="text-gray-400 dark:text-slate-500 text-xs font-english">{stat.labelEn}</p>
                 </div>
 
                 {/* Actions */}
@@ -184,8 +183,8 @@ const ManageStats = ({ lang }) => {
                     title={stat.isActive ? (ar ? 'تعطيل' : 'Disable') : (ar ? 'تفعيل' : 'Enable')}
                     className={`p-2.5 rounded-xl border transition-colors ${
                       stat.isActive
-                        ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20'
-                        : 'bg-white/5 text-slate-500 border-white/10 hover:bg-white/10'
+                        ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 hover:bg-green-500/20'
+                        : 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-slate-500 border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10'
                     }`}
                   >
                     {stat.isActive ? <Eye size={16} /> : <EyeOff size={16} />}
@@ -194,7 +193,7 @@ const ManageStats = ({ lang }) => {
                   {/* Edit */}
                   <button
                     onClick={() => openEdit(stat)}
-                    className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400
+                    className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 dark:text-blue-400
                                border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
                   >
                     <Pencil size={16} />
@@ -203,16 +202,16 @@ const ManageStats = ({ lang }) => {
                   {/* Delete with inline confirm */}
                   {deleteConfirm === stat.id ? (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-red-400 text-xs">{ar ? 'تأكيد؟' : 'Sure?'}</span>
+                      <span className="text-red-500 dark:text-red-400 text-xs">{ar ? 'تأكيد؟' : 'Sure?'}</span>
                       <button
                         onClick={() => confirmDelete(stat.id)}
-                        className="px-2.5 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-xs hover:bg-red-500/30 transition-colors"
+                        className="px-2.5 py-1.5 bg-red-500/20 text-red-500 dark:text-red-400 rounded-lg text-xs hover:bg-red-500/30 transition-colors"
                       >
                         {ar ? 'نعم' : 'Yes'}
                       </button>
                       <button
                         onClick={() => setDeleteConfirm(null)}
-                        className="px-2.5 py-1.5 bg-white/5 text-slate-400 rounded-lg text-xs hover:bg-white/10 transition-colors"
+                        className="px-2.5 py-1.5 bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-slate-400 rounded-lg text-xs hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
                       >
                         {ar ? 'لا' : 'No'}
                       </button>
@@ -220,7 +219,7 @@ const ManageStats = ({ lang }) => {
                   ) : (
                     <button
                       onClick={() => setDeleteConfirm(stat.id)}
-                      className="p-2.5 rounded-xl bg-red-500/10 text-red-400
+                      className="p-2.5 rounded-xl bg-red-500/10 text-red-500 dark:text-red-400
                                  border border-red-500/20 hover:bg-red-500/20 transition-colors"
                     >
                       <Trash2 size={16} />
@@ -237,7 +236,6 @@ const ManageStats = ({ lang }) => {
       <AnimatePresence>
         {isModalOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -246,26 +244,25 @@ const ManageStats = ({ lang }) => {
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
             />
 
-            {/* Panel */}
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 16 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 16 }}
                 transition={{ duration: 0.2 }}
-                className="w-full max-w-lg bg-[#0a0f1e] border border-white/10
+                className="w-full max-w-lg bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10
                            rounded-3xl shadow-2xl p-6 md:p-8 pointer-events-auto"
               >
                 {/* Modal header */}
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-bold text-white">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                     {modalMode === 'add'
                       ? (ar ? 'إضافة إحصائية جديدة' : 'Add New Stat')
                       : (ar ? 'تعديل الإحصائية' : 'Edit Stat')}
                   </h2>
                   <button
                     onClick={() => setIsModalOpen(false)}
-                    className="p-2 text-slate-400 hover:text-white transition-colors"
+                    className="p-2 text-gray-400 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                   >
                     <X size={20} />
                   </button>
@@ -276,7 +273,7 @@ const ManageStats = ({ lang }) => {
                   {/* Labels AR / EN */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-slate-400 text-xs mb-1.5 flex items-center gap-1 block">
+                      <label className="text-gray-500 dark:text-slate-400 text-xs mb-1.5 flex items-center gap-1 block">
                         {ar ? 'التسمية (عربي)' : 'Label (AR)'}
                         <span className="text-red-400">*</span>
                       </label>
@@ -289,7 +286,7 @@ const ManageStats = ({ lang }) => {
                       />
                     </div>
                     <div>
-                      <label className="text-slate-400 text-xs mb-1.5 flex items-center gap-1 block">
+                      <label className="text-gray-500 dark:text-slate-400 text-xs mb-1.5 flex items-center gap-1 block">
                         {ar ? 'التسمية (إنجليزي)' : 'Label (EN)'}
                         <span className="text-red-400">*</span>
                       </label>
@@ -306,7 +303,7 @@ const ManageStats = ({ lang }) => {
                   {/* Value / Suffix / Prefix */}
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="text-slate-400 text-xs mb-1.5 flex items-center gap-1 block">
+                      <label className="text-gray-500 dark:text-slate-400 text-xs mb-1.5 flex items-center gap-1 block">
                         {ar ? 'القيمة' : 'Value'}
                         <span className="text-red-400">*</span>
                       </label>
@@ -319,7 +316,7 @@ const ManageStats = ({ lang }) => {
                       />
                     </div>
                     <div>
-                      <label className="text-slate-400 text-xs mb-1.5 block">
+                      <label className="text-gray-500 dark:text-slate-400 text-xs mb-1.5 block">
                         {ar ? 'اللاحقة' : 'Suffix'}
                       </label>
                       <input
@@ -331,7 +328,7 @@ const ManageStats = ({ lang }) => {
                       />
                     </div>
                     <div>
-                      <label className="text-slate-400 text-xs mb-1.5 block">
+                      <label className="text-gray-500 dark:text-slate-400 text-xs mb-1.5 block">
                         {ar ? 'السابقة' : 'Prefix'}
                       </label>
                       <input
@@ -346,11 +343,11 @@ const ManageStats = ({ lang }) => {
 
                   {/* Icon */}
                   <div>
-                    <label className="text-slate-400 text-xs mb-1.5 block">
+                    <label className="text-gray-500 dark:text-slate-400 text-xs mb-1.5 block">
                       {ar ? 'الأيقونة (emoji)' : 'Icon (emoji)'}
                     </label>
                     <div className="flex items-center gap-3">
-                      <span className="text-3xl w-12 h-12 flex items-center justify-center bg-[#111827] border border-white/10 rounded-xl">
+                      <span className="text-3xl w-12 h-12 flex items-center justify-center bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-xl">
                         {formData.icon || '📊'}
                       </span>
                       <input
@@ -364,12 +361,12 @@ const ManageStats = ({ lang }) => {
                   </div>
 
                   {/* Active toggle */}
-                  <div className="flex items-center justify-between bg-[#111827] border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-between bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-xl p-4">
                     <div>
-                      <p className="text-white text-sm font-medium">
+                      <p className="text-gray-900 dark:text-white text-sm font-medium">
                         {ar ? 'مفعّل في الموقع' : 'Active on site'}
                       </p>
-                      <p className="text-slate-500 text-xs">
+                      <p className="text-gray-400 dark:text-slate-500 text-xs">
                         {ar ? 'يظهر في قسم Hero' : 'Shown in the Hero section'}
                       </p>
                     </div>
@@ -377,7 +374,7 @@ const ManageStats = ({ lang }) => {
                       type="button"
                       onClick={() => updateForm('isActive', !formData.isActive)}
                       className={`w-12 h-6 rounded-full relative transition-colors duration-200 ${
-                        formData.isActive ? 'bg-blue-600' : 'bg-slate-700'
+                        formData.isActive ? 'bg-blue-600' : 'bg-gray-300 dark:bg-slate-700'
                       }`}
                     >
                       <motion.div
@@ -393,8 +390,8 @@ const ManageStats = ({ lang }) => {
                     <button
                       type="button"
                       onClick={() => setIsModalOpen(false)}
-                      className="flex-1 px-4 py-3 bg-white/5 text-slate-300 rounded-xl
-                                 hover:bg-white/10 transition-colors font-medium"
+                      className="flex-1 px-4 py-3 bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-slate-300 rounded-xl
+                                 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors font-medium"
                     >
                       {ar ? 'إلغاء' : 'Cancel'}
                     </button>
