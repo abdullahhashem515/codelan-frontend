@@ -1,50 +1,33 @@
 // src/pages/admin/ManageTechStack.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Pencil, Trash2, ChevronDown, Layers, Code2, X
 } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
+import {
+  apiGetTechStack,
+  apiCreateTechCategory, apiUpdateTechCategory, apiDeleteTechCategory,
+  apiCreateTechItem,     apiUpdateTechItem,     apiDeleteTechItem,
+} from '../../services/api';
+
+// API returns nested: {data:[{id,title,title_en,items:[{id,name,icon,color}]}]}
+const fromApi = (cats) => cats.map(c => ({
+  id:      c.id,
+  titleAr: c.title    ?? '',
+  titleEn: c.title_en ?? '',
+  techs:   (c.items ?? []).map(i => ({ id: i.id, name: i.name, icon: i.icon ?? '', color: i.color ?? '' })),
+}));
 
 const ManageTechStack = () => {
   const { lang } = useLang();
   const isAr = lang === 'ar';
 
-  // 1. البيانات الوهمية (Mock Data) مهيأة لتتوافق مع نهج Headless CMS
-  const [categories, setCategories] = useState([
-    {
-      id: 1,
-      titleAr: 'تطوير الواجهات (Frontend)',
-      titleEn: 'Frontend Development',
-      techs: [
-        { id: 101, name: 'React 19', icon: '⚛️', color: 'text-blue-400' },
-        { id: 102, name: 'Tailwind CSS', icon: '🎨', color: 'text-cyan-400' },
-        { id: 103, name: 'Framer Motion', icon: '✨', color: 'text-purple-400' },
-      ],
-    },
-    {
-      id: 2,
-      titleAr: 'تطوير الخلفية والـ APIs',
-      titleEn: 'Backend & APIs',
-      techs: [
-        { id: 201, name: 'Laravel', icon: '🐘', color: 'text-red-500' },
-        { id: 202, name: 'Node.js', icon: '🟢', color: 'text-green-500' },
-        { id: 203, name: 'MySQL', icon: '🐬', color: 'text-blue-500' },
-      ],
-    },
-    {
-      id: 3,
-      titleAr: 'البنية التحتية والشبكات',
-      titleEn: 'Infrastructure & Networks',
-      techs: [
-        { id: 301, name: 'MikroTik API', icon: '📡', color: 'text-blue-300' },
-        { id: 302, name: 'Docker', icon: '🐳', color: 'text-blue-500' },
-      ],
-    }
-  ]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading]       = useState(true);
 
   // حالة التحكم في الـ Accordion المفتوح
-  const [expandedId, setExpandedId] = useState(1);
+  const [expandedId, setExpandedId] = useState(null);
 
   // حالات النوافذ المنبثقة (Modals)
   const [modalConfig, setModalConfig] = useState({ isOpen: false, mode: '', data: null, catId: null });
@@ -52,31 +35,99 @@ const ManageTechStack = () => {
   // ستايل الحقول النصية الموحد
   const inputCls = 'w-full bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all';
 
-  // دوال التحكم
-  const toggleAccordion = (id) => {
-    setExpandedId(expandedId === id ? null : id);
+  useEffect(() => {
+    apiGetTechStack()
+      .then(res => setCategories(fromApi(res.data ?? [])))
+      .catch(() => setCategories([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const toggleAccordion = (id) => setExpandedId(expandedId === id ? null : id);
+  const openModal  = (mode, data = null, catId = null) => setModalConfig({ isOpen: true, mode, data, catId });
+  const closeModal = () => setModalConfig({ isOpen: false, mode: '', data: null, catId: null });
+
+  const handleDeleteCat = async (catId) => {
+    try {
+      await apiDeleteTechCategory(catId);
+      setCategories(prev => prev.filter(c => c.id !== catId));
+    } catch {
+      alert(isAr ? 'فشل حذف التصنيف' : 'Category delete failed');
+    }
   };
 
-  const openModal = (mode, data = null, catId = null) => {
-    setModalConfig({ isOpen: true, mode, data, catId });
+  const handleDeleteTech = async (techId) => {
+    try {
+      await apiDeleteTechItem(techId);
+      setCategories(prev => prev.map(c => ({ ...c, techs: c.techs.filter(t => t.id !== techId) })));
+    } catch {
+      alert(isAr ? 'فشل الحذف' : 'Delete failed');
+    }
   };
 
-  const closeModal = () => {
-    setModalConfig({ isOpen: false, mode: '', data: null, catId: null });
+  const handleSaveModal = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const mode = modalConfig.mode;
+    try {
+      if (mode === 'addCat') {
+        const res = await apiCreateTechCategory({
+          title:    form.catTitleAr?.value ?? '',
+          title_en: form.catTitleEn?.value ?? '',
+        });
+        const c = res.data;
+        setCategories(prev => [...prev, { id: c.id, titleAr: c.title ?? '', titleEn: c.title_en ?? '', techs: [] }]);
+      } else if (mode === 'editCat') {
+        const res = await apiUpdateTechCategory(modalConfig.catId, {
+          title:    form.catTitleAr?.value ?? '',
+          title_en: form.catTitleEn?.value ?? '',
+        });
+        const c = res.data;
+        setCategories(prev => prev.map(cat => cat.id === modalConfig.catId
+          ? { ...cat, titleAr: c.title ?? '', titleEn: c.title_en ?? '' } : cat));
+      } else if (mode === 'addTech') {
+        const res = await apiCreateTechItem({
+          tech_category_id: modalConfig.catId,
+          name:  form.techName?.value ?? '',
+          icon:  form.techIcon?.value ?? '',
+          color: '',
+        });
+        const i = res.data;
+        setCategories(prev => prev.map(cat => cat.id === modalConfig.catId
+          ? { ...cat, techs: [...cat.techs, { id: i.id, name: i.name, icon: i.icon ?? '', color: i.color ?? '' }] }
+          : cat));
+      } else if (mode === 'editTech') {
+        const res = await apiUpdateTechItem(modalConfig.data.id, {
+          name:  form.techName?.value ?? '',
+          icon:  form.techIcon?.value ?? '',
+          color: modalConfig.data.color ?? '',
+        });
+        const i = res.data;
+        setCategories(prev => prev.map(cat => ({
+          ...cat,
+          techs: cat.techs.map(t => t.id === modalConfig.data.id
+            ? { ...t, name: i.name, icon: i.icon ?? '', color: i.color ?? '' } : t),
+        })));
+      }
+      closeModal();
+    } catch (err) {
+      alert(err?.message ?? (isAr ? 'حدث خطأ' : 'An error occurred'));
+    }
   };
 
-  const handleDeleteCat = (id) => {
-    setCategories(categories.filter(c => c.id !== id));
-  };
-
-  const handleDeleteTech = (catId, techId) => {
-    setCategories(categories.map(c => 
-      c.id === catId ? { ...c, techs: c.techs.filter(t => t.id !== techId) } : c
-    ));
-  };
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-3 text-gray-400 dark:text-slate-500">
+        <svg className="animate-spin w-8 h-8" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+        <span className="text-sm">{isAr ? 'جاري التحميل...' : 'Loading...'}</span>
+      </div>
+    </div>
+  );
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
@@ -126,16 +177,16 @@ const ManageTechStack = () => {
                     {isAr ? cat.titleAr : cat.titleEn}
                   </h2>
                   <span className="bg-blue-500/10 text-blue-400 text-xs py-1 px-2.5 rounded-full font-mono">
-                    {cat.techs.length} {isAr ? 'تقنيات' : 'Techs'}
+                    {(cat.techs ?? []).length} {isAr ? 'تقنيات' : 'Techs'}
                   </span>
                 </div>
 
                 {/* أزرار التحكم بالتصنيف (توقف انتشار الحدث حتى لا يُفتح/يُغلق الأكورديون عند الضغط عليها) */}
                 <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                  <button onClick={() => openModal('editCat', cat)} className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all">
+                  <button onClick={() => openModal('editCat', { titleAr: cat.titleAr, titleEn: cat.titleEn }, cat.id)} className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-all">
                     <Pencil className="w-4 h-4" />
                   </button>
-                  <button onClick={() => handleDeleteCat(cat.id)} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all">
+                  <button onClick={() => { if (window.confirm(isAr ? 'حذف التصنيف وكل تقنياته؟' : 'Delete category and all its techs?')) handleDeleteCat(cat.id); }} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -166,7 +217,7 @@ const ManageTechStack = () => {
 
                       {/* شبكة التقنيات */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {cat.techs.map((tech) => (
+                        {(cat.techs ?? []).map((tech) => (
                           <div key={tech.id} className="bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/5 p-4 rounded-xl flex items-center justify-between group hover:border-gray-300 dark:hover:border-white/10 transition-all">
                             <div className="flex items-center gap-3">
                               <span className="text-2xl">{tech.icon}</span>
@@ -177,7 +228,7 @@ const ManageTechStack = () => {
                               <button onClick={() => openModal('editTech', tech, cat.id)} className="p-1.5 text-slate-400 hover:text-blue-400 rounded-md">
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => handleDeleteTech(cat.id, tech.id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-md">
+                              <button onClick={() => handleDeleteTech(tech.id)} className="p-1.5 text-slate-400 hover:text-red-400 rounded-md">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
@@ -227,28 +278,27 @@ const ManageTechStack = () => {
                 </button>
               </div>
 
-              {/* مجرد Form هيكلي يتناسب مع تصميم الموقع */}
-              <form onSubmit={(e) => { e.preventDefault(); closeModal(); }} className="space-y-4">
+              <form onSubmit={handleSaveModal} className="space-y-4">
                 {modalConfig.mode.includes('Cat') ? (
                   <>
                     <div>
                       <label className="block text-sm text-gray-500 dark:text-slate-400 mb-2">{isAr ? 'العنوان (عربي)' : 'Title (AR)'}</label>
-                      <input type="text" className={inputCls} defaultValue={modalConfig.data?.titleAr || ''} />
+                      <input type="text" name="catTitleAr" required className={inputCls} defaultValue={modalConfig.data?.titleAr || ''} />
                     </div>
                     <div>
                       <label className="block text-sm text-gray-500 dark:text-slate-400 mb-2">{isAr ? 'العنوان (إنجليزي)' : 'Title (EN)'}</label>
-                      <input type="text" className={inputCls} defaultValue={modalConfig.data?.titleEn || ''} />
+                      <input type="text" name="catTitleEn" required className={inputCls} defaultValue={modalConfig.data?.titleEn || ''} dir="ltr" />
                     </div>
                   </>
                 ) : (
                   <>
                     <div>
                       <label className="block text-sm text-gray-500 dark:text-slate-400 mb-2">{isAr ? 'اسم التقنية' : 'Tech Name'}</label>
-                      <input type="text" className={inputCls} defaultValue={modalConfig.data?.name || ''} />
+                      <input type="text" name="techName" required className={inputCls} defaultValue={modalConfig.data?.name || ''} />
                     </div>
                     <div>
                       <label className="block text-sm text-gray-500 dark:text-slate-400 mb-2">{isAr ? 'الأيقونة (Emoji)' : 'Icon (Emoji)'}</label>
-                      <input type="text" className={inputCls} defaultValue={modalConfig.data?.icon || ''} />
+                      <input type="text" name="techIcon" className={inputCls} defaultValue={modalConfig.data?.icon || ''} maxLength={4} />
                     </div>
                   </>
                 )}

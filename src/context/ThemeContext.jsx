@@ -3,8 +3,8 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 // ─── Default color palettes ────────────────────────────────────────────────────
 
 export const DEFAULT_LIGHT = {
-  accent:      '#3b82f6',
-  accent2:     '#ef4444',
+  accent:      '#1d4ed8',
+  accent2:     '#b91c1c',
   accent3:     '#8b5cf6',
   bgBase:      '#f9fafb',
   bgCard:      '#ffffff',
@@ -15,8 +15,8 @@ export const DEFAULT_LIGHT = {
 };
 
 export const DEFAULT_DARK = {
-  accent:      '#3b82f6',
-  accent2:     '#ef4444',
+  accent:      '#1d4ed8',
+  accent2:     '#b91c1c',
   accent3:     '#8b5cf6',
   bgBase:      '#050810',
   bgCard:      '#0a0f1e',
@@ -25,29 +25,6 @@ export const DEFAULT_DARK = {
   textMuted:   '#94a3b8',
   border:      '#1e293b',
 };
-
-// ─── Default & available fonts ────────────────────────────────────────────────
-
-export const DEFAULT_FONTS = {
-  arabic:  'IBM Plex Sans Arabic',
-  english: 'Space Grotesk',
-};
-
-export const ARABIC_FONTS = [
-  'IBM Plex Sans Arabic',
-  'Cairo',
-  'Tajawal',
-  'Noto Kufi Arabic',
-  'Readex Pro',
-];
-
-export const ENGLISH_FONTS = [
-  'Space Grotesk',
-  'Poppins',
-  'Inter',
-  'Roboto',
-  'Nunito',
-];
 
 // ─── Color CSS injection ───────────────────────────────────────────────────────
 
@@ -75,25 +52,6 @@ function injectCSS(light, dark) {
   el.textContent = `:root {\n${toVarBlock(light)}\n}\n.dark {\n${toVarBlock(dark)}\n}`;
 }
 
-// ─── Font injection ────────────────────────────────────────────────────────────
-
-function loadGoogleFont(name) {
-  const id = `gf-${name.replace(/\s+/g, '-').toLowerCase()}`;
-  if (document.getElementById(id)) return;
-  const link = document.createElement('link');
-  link.id = id;
-  link.rel = 'stylesheet';
-  link.href = `https://fonts.googleapis.com/css2?family=${name.replace(/\s+/g, '+')}&display=swap`;
-  document.head.appendChild(link);
-}
-
-function applyFonts({ arabic, english }) {
-  loadGoogleFont(arabic);
-  loadGoogleFont(english);
-  document.documentElement.style.setProperty('--font-ar', `'${arabic}'`);
-  document.documentElement.style.setProperty('--font-en', `'${english}'`);
-}
-
 // ─── Context ───────────────────────────────────────────────────────────────────
 
 const ThemeContext = createContext(null);
@@ -117,17 +75,6 @@ export const ThemeProvider = ({ children }) => {
     return { light: { ...DEFAULT_LIGHT }, dark: { ...DEFAULT_DARK } };
   });
 
-  const [customFonts, setCustomFonts] = useState(() => {
-    try {
-      const raw = localStorage.getItem('themeFonts');
-      if (raw) {
-        const p = JSON.parse(raw);
-        return { ...DEFAULT_FONTS, ...p };
-      }
-    } catch {}
-    return { ...DEFAULT_FONTS };
-  });
-
   // Toggle dark class on <html>
   useEffect(() => {
     localStorage.setItem('theme', theme);
@@ -138,11 +85,6 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     injectCSS(customColors.light, customColors.dark);
   }, [customColors]);
-
-  // Apply fonts on mount and whenever saved fonts change
-  useEffect(() => {
-    applyFonts(customFonts);
-  }, [customFonts]);
 
   const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
 
@@ -172,25 +114,6 @@ export const ThemeProvider = ({ children }) => {
     injectCSS(next.light, next.dark);
   }, []);
 
-  // ── Font API ───────────────────────────────────────────────────────────────
-
-  const previewFont = useCallback((arabic, english) => {
-    applyFonts({ arabic, english });
-  }, []);
-
-  const saveFonts = useCallback((arabic, english) => {
-    const next = { arabic, english };
-    setCustomFonts(next);
-    localStorage.setItem('themeFonts', JSON.stringify(next));
-    applyFonts(next);
-  }, []);
-
-  const resetFonts = useCallback(() => {
-    setCustomFonts({ ...DEFAULT_FONTS });
-    localStorage.removeItem('themeFonts');
-    applyFonts(DEFAULT_FONTS);
-  }, []);
-
   return (
     <ThemeContext.Provider value={{
       theme,
@@ -199,10 +122,6 @@ export const ThemeProvider = ({ children }) => {
       previewColors,
       saveCustomColors,
       resetColors,
-      customFonts,
-      previewFont,
-      saveFonts,
-      resetFonts,
     }}>
       {children}
     </ThemeContext.Provider>

@@ -1,9 +1,10 @@
 // src/pages/admin/ManageTestimonials.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import { Plus, Pencil, Trash2, X, Star, Eye, EyeOff, MessageSquare, Building2 } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
+import { apiGetTestimonials, apiCreateTestimonial, apiUpdateTestimonial, apiDeleteTestimonial } from '../../services/api';
 
 // ─── Shared Style ─────────────────────────────────────────────────────────
 const inputCls =
@@ -15,38 +16,37 @@ const toastStyle = {
   style: { background: '#111827', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
 };
 
-// ─── Mock Data ────────────────────────────────────────────────────────────
-const INITIAL_TESTIMONIALS = [
-  {
-    id: '1',
-    nameAr: 'أحمد عبدالله',
-    nameEn: 'Ahmed Abdullah',
-    positionAr: 'المدير التنفيذي',
-    positionEn: 'CEO',
-    company: 'TechVision',
-    textAr: 'فريق Code LAN قدم لنا نظاماً متكاملاً تجاوز توقعاتنا. الاحترافية في التعامل وسرعة الإنجاز كانت مبهرة.',
-    textEn: 'The Code LAN team provided us with an integrated system that exceeded our expectations. Highly professional.',
-    rating: 5,
-    isActive: true,
-  },
-  {
-    id: '2',
-    nameAr: 'سارة محمد',
-    nameEn: 'Sarah Mohammed',
-    positionAr: 'مديرة التسويق',
-    positionEn: 'Marketing Manager',
-    company: 'Global Solutions',
-    textAr: 'تجربة رائعة! التطبيق يعمل بسلاسة وواجهة المستخدم جذابة جداً.',
-    textEn: 'Great experience! The app runs smoothly and the UI is very attractive.',
-    rating: 4,
-    isActive: true,
-  }
-];
+// ── Field mappers ─────────────────────────────────────────────────────────
+const toForm = (t) => ({
+  id:         t.id,
+  nameAr:     t.name        ?? '',
+  nameEn:     t.name_en     ?? '',
+  positionAr: t.position    ?? '',
+  positionEn: t.position_en ?? '',
+  company:    t.company     ?? '',
+  textAr:     t.text        ?? '',
+  textEn:     t.text_en     ?? '',
+  rating:     t.rating      ?? 5,
+  isActive:   !!t.is_active,
+});
+
+const toApi = (f) => ({
+  name:        f.nameAr,
+  name_en:     f.nameEn,
+  position:    f.positionAr,
+  position_en: f.positionEn,
+  company:     f.company,
+  text:        f.textAr,
+  text_en:     f.textEn,
+  rating:      f.rating,
+  is_active:   f.isActive,
+});
 
 const ManageTestimonials = () => {
   const { lang } = useLang();
   const ar = lang === 'ar';
-  const [testimonials, setTestimonials] = useState(INITIAL_TESTIMONIALS);
+  const [testimonials, setTestimonials] = useState([]);
+  const [loading, setLoading]           = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
@@ -55,6 +55,13 @@ const ManageTestimonials = () => {
   const [formData, setFormData] = useState({
     id: '', nameAr: '', nameEn: '', positionAr: '', positionEn: '', company: '', textAr: '', textEn: '', rating: 5, isActive: true
   });
+
+  useEffect(() => {
+    apiGetTestimonials()
+      .then(res => setTestimonials((res.data ?? []).map(toForm)))
+      .catch(() => setTestimonials([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const openAdd = () => {
     setFormData({ id: '', nameAr: '', nameEn: '', positionAr: '', positionEn: '', company: '', textAr: '', textEn: '', rating: 5, isActive: true });
@@ -68,33 +75,61 @@ const ManageTestimonials = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.nameAr.trim() || !formData.nameEn.trim()) {
       toast.error(ar ? 'يرجى إدخال اسم العميل' : 'Client name is required', toastStyle);
       return;
     }
-
-    if (modalMode === 'add') {
-      setTestimonials(prev => [{ ...formData, id: Date.now().toString() }, ...prev]);
-      toast.success(ar ? 'تمت الإضافة بنجاح' : 'Added successfully', toastStyle);
-    } else {
-      setTestimonials(prev => prev.map(t => t.id === formData.id ? formData : t));
-      toast.success(ar ? 'تم التحديث بنجاح' : 'Updated successfully', toastStyle);
+    try {
+      if (modalMode === 'add') {
+        const res = await apiCreateTestimonial(toApi(formData));
+        setTestimonials(prev => [toForm(res.data), ...prev]);
+        toast.success(ar ? 'تمت الإضافة بنجاح' : 'Added successfully', toastStyle);
+      } else {
+        const res = await apiUpdateTestimonial(formData.id, toApi(formData));
+        setTestimonials(prev => prev.map(t => t.id === formData.id ? toForm(res.data) : t));
+        toast.success(ar ? 'تم التحديث بنجاح' : 'Updated successfully', toastStyle);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.error(err?.message ?? (ar ? 'حدث خطأ' : 'An error occurred'), toastStyle);
     }
-    setIsModalOpen(false);
   };
 
-  const confirmDelete = (id) => {
-    setTestimonials(prev => prev.filter(t => t.id !== id));
-    setDeleteConfirm(null);
-    toast.success(ar ? 'تم الحذف' : 'Deleted', toastStyle);
+  const confirmDelete = async (id) => {
+    try {
+      await apiDeleteTestimonial(id);
+      setTestimonials(prev => prev.filter(t => t.id !== id));
+      setDeleteConfirm(null);
+      toast.success(ar ? 'تم الحذف' : 'Deleted', toastStyle);
+    } catch {
+      toast.error(ar ? 'فشل الحذف' : 'Delete failed', toastStyle);
+    }
   };
 
-  const toggleActive = (id) => {
-    setTestimonials(prev => prev.map(t => t.id === id ? { ...t, isActive: !t.isActive } : t));
+  const toggleActive = async (id) => {
+    const item = testimonials.find(t => t.id === id);
+    if (!item) return;
+    const updated = { ...item, isActive: !item.isActive };
+    setTestimonials(prev => prev.map(t => t.id === id ? updated : t));
     toast.success(ar ? 'تم تغيير حالة الظهور' : 'Visibility changed', toastStyle);
+    try { await apiUpdateTestimonial(id, toApi(updated)); } catch {
+      setTestimonials(prev => prev.map(t => t.id === id ? item : t));
+    }
   };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-3 text-gray-400 dark:text-slate-500">
+        <svg className="animate-spin w-8 h-8" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+        <span className="text-sm">{ar ? 'جاري التحميل...' : 'Loading...'}</span>
+      </div>
+    </div>
+  );
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-6xl mx-auto space-y-6">

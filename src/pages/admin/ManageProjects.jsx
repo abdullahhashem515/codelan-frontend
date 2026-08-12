@@ -1,8 +1,9 @@
 // src/pages/admin/ManageProjects.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Layers } from 'lucide-react';
+import { Plus, X, Layers, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
+import { apiGetProjects, apiCreateProject, apiUpdateProject, apiDeleteProject } from '../../services/api';
 
 // ── Shared input style (light + dark) ────────────────────────────────────────
 const inputCls =
@@ -35,81 +36,47 @@ const MetricRow = ({ metric, index, onChange, onRemove }) => (
   </div>
 );
 
-// ── Mock data aligned with ProjectDetails.jsx structure ───────────────────────
-const INITIAL_PROJECTS = [
-  {
-    id: 1,
-    categoryAr: 'منصة SaaS',
-    categoryEn: 'SaaS Platform',
-    titleAr: 'منصة إدارة الأعمال الذكية',
-    titleEn: 'Smart ERP Platform',
-    descriptionAr: 'نظام ERP متكامل لإدارة الموارد والمشاريع والفرق.',
-    descriptionEn: 'A comprehensive ERP system for managing resources, projects, and teams.',
-    fullDescriptionAr: 'قمنا بتصميم وتطوير منصة إدارة أعمال متكاملة تشمل إدارة الموارد البشرية والمشاريع والعملاء والمخزون مع تحليلات فورية وتقارير ذكية ولوحة تحكم تفاعلية تدعم اللغتين.',
-    fullDescriptionEn: 'We designed and developed a comprehensive ERP platform covering HR management, projects, clients, and inventory with real-time analytics, smart reports, and an interactive bilingual dashboard.',
-    featuresAr: ['إدارة المستخدمين والصلاحيات', 'تتبع المشاريع والمهام', 'تقارير وإحصاءات فورية', 'دعم العربية والإنجليزية', 'تكامل مع بوابات الدفع المحلية'],
-    featuresEn: ['User & permission management', 'Project & task tracking', 'Real-time reports & stats', 'Arabic & English support', 'Local payment gateway integration'],
-    metrics: [
-      { val: '10K', lbl: { ar: 'مستخدم نشط', en: 'Active Users' } },
-      { val: '99.9%', lbl: { ar: 'وقت التشغيل', en: 'Uptime' } },
-      { val: '3x', lbl: { ar: 'نمو الإيرادات', en: 'Revenue Growth' } },
-    ],
-    stack: 'React, Laravel, MySQL',
-    technologies: ['React', 'Laravel', 'MySQL', 'Docker', 'Redis'],
-    thumbGradient: 'from-[#0a1628] via-[#162a4a] to-[#1e3a6e]',
-    strokeColor: '#3b82f6',
-    projectUrl: '#',
-    status: 'active',
-  },
-  {
-    id: 2,
-    categoryAr: 'تطبيق موبايل',
-    categoryEn: 'Mobile App',
-    titleAr: 'تطبيق خدمات وتوصيل محلي',
-    titleEn: 'Local Delivery App',
-    descriptionAr: 'تطبيق توصيل شامل يربط التجار بالعملاء عبر خريطة تفاعلية.',
-    descriptionEn: 'A full delivery app connecting merchants with customers via an interactive map.',
-    fullDescriptionAr: 'طورنا تطبيق توصيل متكامل يربط التجار المحليين بالعملاء عبر خريطة تفاعلية مع تتبع فوري للطلبات وخيارات دفع متعددة وإشعارات لحظية لكلا الطرفين.',
-    fullDescriptionEn: 'We developed a full delivery app connecting local merchants with customers via an interactive map, real-time order tracking, multiple payment options, and instant notifications.',
-    featuresAr: ['تتبع الطلبات لحظياً', 'خريطة تفاعلية', 'دعم متعدد التجار', 'إشعارات فورية', 'تقييمات العملاء'],
-    featuresEn: ['Real-time order tracking', 'Interactive map', 'Multi-merchant support', 'Push notifications', 'Customer ratings'],
-    metrics: [
-      { val: '5K', lbl: { ar: 'طلب يومي', en: 'Daily Orders' } },
-      { val: '200+', lbl: { ar: 'تاجر مسجل', en: 'Registered Merchants' } },
-      { val: '4.8★', lbl: { ar: 'تقييم المتجر', en: 'Store Rating' } },
-    ],
-    stack: 'Flutter, Node.js',
-    technologies: ['Flutter', 'Node.js', 'MongoDB', 'Firebase', 'Google Maps'],
-    thumbGradient: 'from-[#0d1f0a] via-[#1a3a15] to-[#1f4a1c]',
-    strokeColor: '#22c55e',
-    projectUrl: '#',
-    status: 'active',
-  },
-  {
-    id: 3,
-    categoryAr: 'نظام ويب وشبكات',
-    categoryEn: 'Web & Networks System',
-    titleAr: 'منصة إدارة شبكات (ISP)',
-    titleEn: 'ISP Management Platform',
-    descriptionAr: 'منصة متكاملة لإدارة شبكات الإنترنت لمزودي الخدمة.',
-    descriptionEn: 'An integrated platform for ISP network management.',
-    fullDescriptionAr: 'منصة متخصصة لإدارة شبكات الإنترنت تتكامل مع أجهزة MikroTik وتتيح إدارة المشتركين والحزم والفواتير والتقارير بشكل مركزي وفعّال.',
-    fullDescriptionEn: 'A specialized ISP management platform integrating with MikroTik devices for centralized subscriber, package, billing, and report management.',
-    featuresAr: ['تكامل مع MikroTik API', 'إدارة المشتركين والحزم', 'نظام فواتير تلقائي', 'تقارير الاستهلاك', 'لوحة تحكم مركزية'],
-    featuresEn: ['MikroTik API integration', 'Subscriber & package management', 'Automated billing system', 'Usage reports', 'Central control panel'],
-    metrics: [
-      { val: '500+', lbl: { ar: 'مشترك', en: 'Subscribers' } },
-      { val: '15', lbl: { ar: 'شبكة مُدارة', en: 'Managed Networks' } },
-      { val: '40%', lbl: { ar: 'تقليل في الوقت', en: 'Time Reduction' } },
-    ],
-    stack: 'Vue.js, MikroTik API',
-    technologies: ['Vue.js', 'Laravel', 'MikroTik API', 'MySQL', 'WebSocket'],
-    thumbGradient: 'from-[#1a0a28] via-[#2d1545] to-[#3d1f5e]',
-    strokeColor: '#a855f7',
-    projectUrl: '#',
-    status: 'inactive',
-  },
-];
+// ── Field mappers ──────────────────────────────────────────────────────────
+const toForm = (p) => ({
+  id:               p.id,
+  categoryAr:       p.category          ?? '',
+  categoryEn:       p.category_en       ?? '',
+  titleAr:          p.title             ?? '',
+  titleEn:          p.title_en          ?? '',
+  descriptionAr:    p.description       ?? '',
+  descriptionEn:    p.description_en    ?? '',
+  fullDescriptionAr: p.full_description  ?? '',
+  fullDescriptionEn: p.full_description_en ?? '',
+  featuresAr:       Array.isArray(p.features)    ? p.features    : (p.features    ? JSON.parse(p.features)    : []),
+  featuresEn:       Array.isArray(p.features_en) ? p.features_en : (p.features_en ? JSON.parse(p.features_en) : []),
+  metrics:          Array.isArray(p.metrics)     ? p.metrics     : (p.metrics     ? JSON.parse(p.metrics)     : [{ val: '', lbl: { ar: '', en: '' } }]),
+  stack:            p.stack             ?? '',
+  technologies:     Array.isArray(p.technologies) ? p.technologies : (p.technologies ? JSON.parse(p.technologies) : []),
+  thumbGradient:    p.thumb_gradient    ?? 'from-[#0a1628] via-[#162a4a] to-[#1e3a6e]',
+  strokeColor:      p.stroke_color      ?? '#3b82f6',
+  projectUrl:       p.project_url       ?? '#',
+  status:           p.status            ?? 'active',
+});
+
+const toApi = (f) => ({
+  category:            f.categoryAr,
+  category_en:         f.categoryEn,
+  title:               f.titleAr,
+  title_en:            f.titleEn,
+  description:         f.descriptionAr,
+  description_en:      f.descriptionEn,
+  full_description:    f.fullDescriptionAr,
+  full_description_en: f.fullDescriptionEn,
+  features:            f.featuresAr,
+  features_en:         f.featuresEn,
+  metrics:             f.metrics,
+  stack:               f.stack,
+  technologies:        f.technologies,
+  thumb_gradient:      f.thumbGradient,
+  stroke_color:        f.strokeColor,
+  project_url:         f.projectUrl,
+  status:              f.status,
+});
 
 const EMPTY_FORM = {
   id: null,
@@ -131,12 +98,21 @@ const ManageProjects = () => {
   const { lang } = useLang();
   const ar = lang === 'ar';
 
-  const [projects, setProjects] = useState(INITIAL_PROJECTS);
+  const [projects, setProjects]           = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [saving, setSaving]               = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('add');
+  const [modalMode, setModalMode]         = useState('add');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null);
-  const [formData, setFormData] = useState(EMPTY_FORM);
+  const [formData, setFormData]           = useState(EMPTY_FORM);
+
+  useEffect(() => {
+    apiGetProjects()
+      .then(res => setProjects((res.data ?? []).map(toForm)))
+      .catch(() => setProjects([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   // ── Form helpers ──────────────────────────────────────────────────────────
   const setField = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
@@ -171,20 +147,50 @@ const ManageProjects = () => {
     setIsFormModalOpen(true);
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (modalMode === 'add') {
-      setProjects(prev => [...prev, { ...formData, id: Date.now() }]);
-    } else {
-      setProjects(prev => prev.map(p => p.id === formData.id ? formData : p));
+    setSaving(true);
+    try {
+      if (modalMode === 'add') {
+        const res = await apiCreateProject(toApi(formData));
+        setProjects(prev => [...prev, toForm(res.data)]);
+      } else {
+        const res = await apiUpdateProject(formData.id, toApi(formData));
+        setProjects(prev => prev.map(p => p.id === formData.id ? toForm(res.data) : p));
+      }
+      setIsFormModalOpen(false);
+    } catch (err) {
+      alert(err?.message ?? (ar ? 'حدث خطأ' : 'An error occurred'));
+    } finally {
+      setSaving(false);
     }
-    setIsFormModalOpen(false);
   };
 
   const handleOpenDeleteModal = (id) => { setProjectToDelete(id); setIsDeleteModalOpen(true); };
-  const confirmDelete = () => { setProjects(prev => prev.filter(p => p.id !== projectToDelete)); setIsDeleteModalOpen(false); setProjectToDelete(null); };
+  const confirmDelete = async () => {
+    try {
+      await apiDeleteProject(projectToDelete);
+      setProjects(prev => prev.filter(p => p.id !== projectToDelete));
+    } catch {
+      alert(ar ? 'فشل الحذف' : 'Delete failed');
+    }
+    setIsDeleteModalOpen(false);
+    setProjectToDelete(null);
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-3 text-gray-400 dark:text-slate-500">
+        <svg className="animate-spin w-8 h-8" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+        <span className="text-sm">{ar ? 'جاري تحميل المشاريع...' : 'Loading projects...'}</span>
+      </div>
+    </div>
+  );
+
   return (
     <div className="relative">
 
@@ -261,8 +267,8 @@ const ManageProjects = () => {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleOpenEditModal(project)} title={ar ? 'تعديل' : 'Edit'} className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors">✎</button>
-                      <button onClick={() => handleOpenDeleteModal(project.id)} title={ar ? 'حذف' : 'Delete'} className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 dark:text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors">🗑️</button>
+                      <button onClick={() => handleOpenEditModal(project)} title={ar ? 'تعديل' : 'Edit'} className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors"><Pencil size={14} /></button>
+                      <button onClick={() => handleOpenDeleteModal(project.id)} title={ar ? 'حذف' : 'Delete'} className="w-8 h-8 rounded-lg bg-red-500/10 text-red-500 dark:text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={14} /></button>
                     </div>
                   </td>
                 </tr>
@@ -288,7 +294,7 @@ const ManageProjects = () => {
                   <Layers className="text-blue-500 w-5 h-5" />
                   {modalMode === 'add' ? (ar ? 'إضافة مشروع جديد' : 'Add New Project') : (ar ? 'تعديل المشروع' : 'Edit Project')}
                 </h2>
-                <button onClick={() => setIsFormModalOpen(false)} className="text-gray-400 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors">✕</button>
+                <button onClick={() => setIsFormModalOpen(false)} className="text-gray-400 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors"><X size={18} /></button>
               </div>
 
               {/* Body */}
@@ -447,8 +453,8 @@ const ManageProjects = () => {
                 <button type="button" onClick={() => setIsFormModalOpen(false)} className="px-6 py-2.5 rounded-xl text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
                   {ar ? 'إلغاء' : 'Cancel'}
                 </button>
-                <button type="submit" form="projectForm" className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20">
-                  {ar ? 'حفظ البيانات' : 'Save Project'}
+                <button type="submit" form="projectForm" disabled={saving} className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-2.5 rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-60 disabled:cursor-not-allowed">
+                  {saving ? (ar ? 'جاري الحفظ...' : 'Saving...') : (ar ? 'حفظ البيانات' : 'Save Project')}
                 </button>
               </div>
             </motion.div>
@@ -462,7 +468,7 @@ const ManageProjects = () => {
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
               className="relative w-full max-w-sm bg-white dark:bg-[#111827] border border-red-500/20 rounded-2xl p-6 text-center shadow-2xl"
             >
-              <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 border border-red-500/20">⚠️</div>
+              <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20"><AlertTriangle size={28} /></div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{ar ? 'تأكيد الحذف' : 'Confirm Delete'}</h3>
               <p className="text-gray-500 dark:text-slate-400 text-sm mb-6">{ar ? 'هل أنت متأكد من حذف هذا المشروع نهائياً؟' : 'Are you sure you want to delete this project permanently?'}</p>
               <div className="flex gap-3">

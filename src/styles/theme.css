@@ -5,13 +5,13 @@
    ─────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* Typography — font families (overridden at runtime by ThemeContext) */
-  --font-ar:           'IBM Plex Sans Arabic';
-  --font-en:           'Space Grotesk';
+  /* Typography — fixed, self-hosted font families (see src/index.css @font-face) */
+  --font-ar:           'Alexandria';
+  --font-en:           'Geist';
 
   /* Brand / Accent */
-  --color-accent:      #3b82f6;
-  --color-accent-2:    #ef4444;
+  --color-accent:      #1d4ed8;
+  --color-accent-2:    #b91c1c;
   --color-accent-3:    #8b5cf6;
 
   /* Backgrounds */
@@ -25,12 +25,15 @@
 
   /* Borders */
   --color-border:      #e5e7eb;
+
+  /* اسم الشركة في الهيدر — أزرق يسار، رمادي فاتح مسيطر بالمنتصف، أحمر يمين */
+  --nav-name-gradient: linear-gradient(to right, #3b82f6 0%, #ef4444 100%);
 }
 
 /* Dark mode defaults ─ applied when <html class="dark"> is present */
 .dark {
-  --color-accent:      #3b82f6;
-  --color-accent-2:    #ef4444;
+  --color-accent:      #1d4ed8;
+  --color-accent-2:    #b91c1c;
   --color-accent-3:    #8b5cf6;
 
   --color-bg-base:     #050810;
@@ -41,4 +44,8 @@
   --color-text-muted:  #94a3b8;
 
   --color-border:      #1e293b;
+
+  /* ألوان الشعار الفعلية: رمادي فاتح مسيطر (#E1E2E4)، لمسة أزرق (#0158B0)
+     ولمسة أحمر (#DC1B1C) فقط عند الطرفين. */
+  --nav-name-gradient: linear-gradient(to right, #0158B0 0%, #E1E2E4 22%, #E1E2E4 78%, #DC1B1C 100%);
 }

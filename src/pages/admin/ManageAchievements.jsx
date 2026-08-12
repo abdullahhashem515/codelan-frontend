@@ -1,9 +1,12 @@
 // src/pages/admin/ManageAchievements.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Star } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
+import { apiGetAchievements, apiCreateAchievement, apiUpdateAchievement, apiDeleteAchievement } from '../../services/api';
+import DynamicIcon from '../../components/DynamicIcon';
+import IconPicker from '../../components/IconPicker';
 
 // ─── Shared style ─────────────────────────────────────────────────────────────
 
@@ -16,38 +19,29 @@ const toastStyle = {
   style: { background: '#111827', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
 };
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
+// ── Field mappers ────────────────────────────────────────────────────────────
+const toForm = (a) => ({
+  id:         a.id,
+  titleAr:    a.title      ?? '',
+  titleEn:    a.title_en   ?? '',
+  subtitleAr: a.subtitle   ?? '',
+  subtitleEn: a.subtitle_en ?? '',
+  value:      String(a.value ?? ''),
+  unit:       a.unit       ?? '+',
+  icon:       a.icon       ?? '🏆',
+  isFeatured: !!a.is_featured,
+});
 
-const INITIAL_ACHIEVEMENTS = [
-  {
-    id: 1,
-    titleAr: 'مشاريع مكتملة',       titleEn: 'Completed Projects',
-    subtitleAr: 'لعملاء في اليمن والخليج', subtitleEn: 'For clients in Yemen & Gulf',
-    value: '20', unit: '+', icon: '🚀',
-    isFeatured: true,
-  },
-  {
-    id: 2,
-    titleAr: 'عملاء راضون',         titleEn: 'Happy Clients',
-    subtitleAr: 'من مختلف القطاعات',     subtitleEn: 'Across diverse sectors',
-    value: '15', unit: '+', icon: '🤝',
-    isFeatured: true,
-  },
-  {
-    id: 3,
-    titleAr: 'سنوات الخبرة',        titleEn: 'Years Experience',
-    subtitleAr: 'في تطوير البرمجيات',    subtitleEn: 'In software development',
-    value: '3',  unit: '+', icon: '⚡',
-    isFeatured: false,
-  },
-  {
-    id: 4,
-    titleAr: 'رضا العملاء',         titleEn: 'Client Satisfaction',
-    subtitleAr: 'معدل رضا موثق ومستمر',  subtitleEn: 'Verified satisfaction rate',
-    value: '99', unit: '%', icon: '⭐',
-    isFeatured: true,
-  },
-];
+const toApi = (f) => ({
+  title:       f.titleAr,
+  title_en:    f.titleEn,
+  subtitle:    f.subtitleAr,
+  subtitle_en: f.subtitleEn,
+  value:       f.value,
+  unit:        f.unit,
+  icon:        f.icon,
+  is_featured: f.isFeatured,
+});
 
 const EMPTY_FORM = {
   id: null,
@@ -63,11 +57,19 @@ const ManageAchievements = () => {
   const { lang } = useLang();
   const ar = lang === 'ar';
 
-  const [achievements, setAchievements]   = useState(INITIAL_ACHIEVEMENTS);
+  const [achievements, setAchievements]   = useState([]);
+  const [loading, setLoading]             = useState(true);
   const [isModalOpen, setIsModalOpen]     = useState(false);
   const [modalMode, setModalMode]         = useState('add');
   const [formData, setFormData]           = useState(EMPTY_FORM);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  useEffect(() => {
+    apiGetAchievements()
+      .then(res => setAchievements((res.data ?? []).map(toForm)))
+      .catch(() => setAchievements([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const updateForm = (key, val) => setFormData(prev => ({ ...prev, [key]: val }));
 
@@ -83,30 +85,48 @@ const ManageAchievements = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.titleAr.trim() || !formData.titleEn.trim() || !formData.value.trim()) {
       toast.error(ar ? 'يرجى ملء الحقول المطلوبة.' : 'Please fill required fields.', toastStyle);
       return;
     }
-    if (modalMode === 'add') {
-      setAchievements(prev => [...prev, { ...formData, id: Date.now() }]);
-      toast.success(ar ? 'تمت إضافة الإنجاز.' : 'Achievement added.', toastStyle);
-    } else {
-      setAchievements(prev => prev.map(a => a.id === formData.id ? formData : a));
-      toast.success(ar ? 'تم تحديث الإنجاز.' : 'Achievement updated.', toastStyle);
+    try {
+      if (modalMode === 'add') {
+        const res = await apiCreateAchievement(toApi(formData));
+        setAchievements(prev => [...prev, toForm(res.data)]);
+        toast.success(ar ? 'تمت إضافة الإنجاز.' : 'Achievement added.', toastStyle);
+      } else {
+        const res = await apiUpdateAchievement(formData.id, toApi(formData));
+        setAchievements(prev => prev.map(a => a.id === formData.id ? toForm(res.data) : a));
+        toast.success(ar ? 'تم تحديث الإنجاز.' : 'Achievement updated.', toastStyle);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.error(err?.message ?? (ar ? 'حدث خطأ' : 'An error occurred'), toastStyle);
     }
-    setIsModalOpen(false);
   };
 
-  const confirmDelete = (id) => {
-    setAchievements(prev => prev.filter(a => a.id !== id));
-    setDeleteConfirm(null);
-    toast.success(ar ? 'تم حذف الإنجاز.' : 'Achievement deleted.', toastStyle);
+  const confirmDelete = async (id) => {
+    try {
+      await apiDeleteAchievement(id);
+      setAchievements(prev => prev.filter(a => a.id !== id));
+      setDeleteConfirm(null);
+      toast.success(ar ? 'تم حذف الإنجاز.' : 'Achievement deleted.', toastStyle);
+    } catch {
+      toast.error(ar ? 'فشل الحذف' : 'Delete failed', toastStyle);
+    }
   };
 
-  const toggleFeatured = (id) =>
-    setAchievements(prev => prev.map(a => a.id === id ? { ...a, isFeatured: !a.isFeatured } : a));
+  const toggleFeatured = async (id) => {
+    const item = achievements.find(a => a.id === id);
+    if (!item) return;
+    const updated = { ...item, isFeatured: !item.isFeatured };
+    setAchievements(prev => prev.map(a => a.id === id ? updated : a));
+    try { await apiUpdateAchievement(id, toApi(updated)); } catch {
+      setAchievements(prev => prev.map(a => a.id === id ? item : a));
+    }
+  };
 
   const swap = (arr, i, j) => {
     const next = [...arr];
@@ -116,6 +136,18 @@ const ManageAchievements = () => {
 
   const moveUp   = (idx) => { if (idx > 0)                       setAchievements(prev => swap(prev, idx, idx - 1)); };
   const moveDown = (idx) => { if (idx < achievements.length - 1) setAchievements(prev => swap(prev, idx, idx + 1)); };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-3 text-gray-400 dark:text-slate-500">
+        <svg className="animate-spin w-8 h-8" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+        <span className="text-sm">{ar ? 'جاري التحميل...' : 'Loading...'}</span>
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -180,8 +212,8 @@ const ManageAchievements = () => {
                 {/* Icon + Value */}
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-[#111827] border border-gray-200 dark:border-white/10
-                                  flex items-center justify-center text-3xl flex-shrink-0">
-                    {item.icon}
+                                  flex items-center justify-center text-blue-500 dark:text-blue-400 flex-shrink-0">
+                    <DynamicIcon emoji={item.icon} size={28} />
                   </div>
                   <div>
                     <div className="text-4xl font-bold font-mono text-gray-900 dark:text-white leading-none">
@@ -407,19 +439,7 @@ const ManageAchievements = () => {
                       <label className="text-gray-500 dark:text-slate-400 text-xs mb-1.5 block">
                         {ar ? 'الأيقونة' : 'Icon'}
                       </label>
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl w-12 h-12 flex items-center justify-center
-                                         bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-xl flex-shrink-0">
-                          {formData.icon || '🏆'}
-                        </span>
-                        <input
-                          className={inputCls}
-                          value={formData.icon}
-                          onChange={e => updateForm('icon', e.target.value)}
-                          placeholder="🏆"
-                          maxLength={4}
-                        />
-                      </div>
+                      <IconPicker lang={lang} value={formData.icon} onChange={(emoji) => updateForm('icon', emoji)} />
                     </div>
                   </div>
 

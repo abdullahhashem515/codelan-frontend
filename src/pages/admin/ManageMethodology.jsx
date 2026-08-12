@@ -1,9 +1,12 @@
 // src/pages/admin/ManageMethodology.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import { Plus, Pencil, Trash2, GripVertical, X } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
+import { apiGetMethodology, apiCreateStep, apiUpdateStep, apiDeleteStep } from '../../services/api';
+import DynamicIcon from '../../components/DynamicIcon';
+import IconPicker from '../../components/IconPicker';
 import {
   DndContext,
   closestCenter,
@@ -31,14 +34,24 @@ const toastStyle = {
   style: { background: '#111827', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
 };
 
-// ─── Mock Data ────────────────────────────────────────────────────────────
-const INITIAL_STEPS = [
-  { id: '1', icon: '🔍', titleAr: 'التحليل وهندسة المتطلبات', titleEn: 'Analysis & Requirements', descAr: 'نبدأ بفهم عميق لاحتياجاتك ونحلل السوق.', descEn: 'We start by deeply understanding your needs.' },
-  { id: '2', icon: '🎨', titleAr: 'التصميم وتجربة المستخدم', titleEn: 'UI/UX Design', descAr: 'نحول الهيكل إلى واجهات احترافية.', descEn: 'We transform the structure into professional interfaces.' },
-  { id: '3', icon: '⚙️', titleAr: 'التطوير البرمجي (Agile)', titleEn: 'Agile Development', descAr: 'كتابة كود نظيف وموثق باستخدام تقنياتنا الحديثة.', descEn: 'Writing clean, documented code using modern tech.' },
-  { id: '4', icon: '🧪', titleAr: 'الاختبار وضمان الجودة', titleEn: 'Testing & QA', descAr: 'تخضع الأنظمة لاختبارات أداء وأمان دقيقة.', descEn: 'Systems undergo rigorous performance and security tests.' },
-  { id: '5', icon: '🚀', titleAr: 'الإطلاق والدعم الفني', titleEn: 'Launch & Support', descAr: 'رفع المشروع على السيرفرات مع دعم تقني مستمر.', descEn: 'Deploying the project with ongoing support.' },
-];
+// ── Field mappers ────────────────────────────────────────────────────────────
+const toForm = (s) => ({
+  id:      String(s.id),
+  icon:    s.icon           ?? '✨',
+  titleAr: s.title          ?? '',
+  titleEn: s.title_en       ?? '',
+  descAr:  s.description    ?? '',
+  descEn:  s.description_en ?? '',
+});
+
+const toApi = (f, order) => ({
+  icon:           f.icon,
+  title:          f.titleAr,
+  title_en:       f.titleEn,
+  description:    f.descAr,
+  description_en: f.descEn,
+  ...(order !== undefined ? { order } : {}),
+});
 
 // ─── Sortable Item Component ──────────────────────────────────────────────
 const SortableStep = ({ step, index, onEdit, onDelete, ar }) => {
@@ -71,8 +84,8 @@ const SortableStep = ({ step, index, onEdit, onDelete, ar }) => {
         <GripVertical size={20} />
       </div>
 
-      <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-[#111827] border border-gray-200 dark:border-white/5 flex items-center justify-center text-2xl flex-shrink-0">
-        {step.icon}
+      <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-[#111827] border border-gray-200 dark:border-white/5 flex items-center justify-center text-blue-500 dark:text-blue-400 flex-shrink-0">
+        <DynamicIcon emoji={step.icon} size={22} />
       </div>
 
       <div className="flex-1">
@@ -101,7 +114,8 @@ const SortableStep = ({ step, index, onEdit, onDelete, ar }) => {
 const ManageMethodology = () => {
   const { lang } = useLang();
   const ar = lang === 'ar';
-  const [steps, setSteps] = useState(INITIAL_STEPS);
+  const [steps, setSteps]     = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
@@ -110,6 +124,13 @@ const ManageMethodology = () => {
   const [formData, setFormData] = useState({
     id: '', icon: '', titleAr: '', titleEn: '', descAr: '', descEn: ''
   });
+
+  useEffect(() => {
+    apiGetMethodology()
+      .then(res => setSteps((res.data ?? []).map(toForm)))
+      .catch(() => setSteps([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -124,6 +145,9 @@ const ManageMethodology = () => {
         const newIndex = items.findIndex((item) => item.id === over.id);
         const newArray = arrayMove(items, oldIndex, newIndex);
         toast.success(ar ? 'تم تحديث الترتيب' : 'Order updated', toastStyle);
+        newArray.forEach((step, idx) => {
+          apiUpdateStep(step.id, toApi(step, idx + 1)).catch(() => {});
+        });
         return newArray;
       });
     }
@@ -141,27 +165,50 @@ const ManageMethodology = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.titleAr.trim() || !formData.titleEn.trim()) {
       toast.error(ar ? 'يرجى إدخال العنوان' : 'Title is required', toastStyle);
       return;
     }
-    if (modalMode === 'add') {
-      setSteps(prev => [...prev, { ...formData, id: Date.now().toString() }]);
-      toast.success(ar ? 'تمت الإضافة بنجاح' : 'Added successfully', toastStyle);
-    } else {
-      setSteps(prev => prev.map(s => s.id === formData.id ? formData : s));
-      toast.success(ar ? 'تم التحديث بنجاح' : 'Updated successfully', toastStyle);
+    try {
+      if (modalMode === 'add') {
+        const res = await apiCreateStep(toApi(formData, steps.length + 1));
+        setSteps(prev => [...prev, toForm(res.data)]);
+        toast.success(ar ? 'تمت الإضافة بنجاح' : 'Added successfully', toastStyle);
+      } else {
+        const res = await apiUpdateStep(formData.id, toApi(formData));
+        setSteps(prev => prev.map(s => s.id === formData.id ? toForm(res.data) : s));
+        toast.success(ar ? 'تم التحديث بنجاح' : 'Updated successfully', toastStyle);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.error(err?.message ?? (ar ? 'حدث خطأ' : 'An error occurred'), toastStyle);
     }
-    setIsModalOpen(false);
   };
 
-  const confirmDelete = (id) => {
-    setSteps(prev => prev.filter(s => s.id !== id));
-    setDeleteConfirm(null);
-    toast.success(ar ? 'تم الحذف' : 'Deleted', toastStyle);
+  const confirmDelete = async (id) => {
+    try {
+      await apiDeleteStep(id);
+      setSteps(prev => prev.filter(s => s.id !== id));
+      setDeleteConfirm(null);
+      toast.success(ar ? 'تم الحذف' : 'Deleted', toastStyle);
+    } catch {
+      toast.error(ar ? 'فشل الحذف' : 'Delete failed', toastStyle);
+    }
   };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-3 text-gray-400 dark:text-slate-500">
+        <svg className="animate-spin w-8 h-8" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+        <span className="text-sm">{ar ? 'جاري التحميل...' : 'Loading...'}</span>
+      </div>
+    </div>
+  );
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto space-y-6">
@@ -215,9 +262,9 @@ const ManageMethodology = () => {
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">
-                    {ar ? 'الأيقونة (إيموجي)' : 'Icon (Emoji)'}
+                    {ar ? 'الأيقونة' : 'Icon'}
                   </label>
-                  <input type="text" name="icon" value={formData.icon} onChange={(e) => setFormData({...formData, icon: e.target.value})} className={inputCls} placeholder="🚀" />
+                  <IconPicker lang={lang} value={formData.icon} onChange={(emoji) => setFormData({ ...formData, icon: emoji })} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>

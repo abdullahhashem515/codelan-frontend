@@ -1,13 +1,17 @@
 // src/pages/admin/GeneralSettings.jsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import {
   Globe, Phone, Mail, MapPin, Share2, Search, Palette,
   Plus, Trash2, GripVertical, Eye, EyeOff, Upload, X, Tag, Save, RotateCcw,
+  Sun, Moon, Link2,
 } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
-import { useTheme, DEFAULT_LIGHT, DEFAULT_DARK, DEFAULT_FONTS, ARABIC_FONTS, ENGLISH_FONTS } from '../../context/ThemeContext';
+import { useTheme, DEFAULT_LIGHT, DEFAULT_DARK } from '../../context/ThemeContext';
+import { SOCIAL_ICONS } from '../../utils/socialIcons';
+import { apiGetSettings, apiUpdateSettings, apiUploadFile } from '../../services/api';
+import { getDiff } from '../../utils/diff';
 
 // ─── Shared input style ───────────────────────────────────────────────────────
 
@@ -29,17 +33,17 @@ const TABS = [
 // ─── Social platforms ─────────────────────────────────────────────────────────
 
 const PLATFORMS = [
-  { value: 'facebook',  label: 'Facebook',    icon: '📘' },
-  { value: 'twitter',   label: 'Twitter / X', icon: '✖' },
-  { value: 'instagram', label: 'Instagram',   icon: '📷' },
-  { value: 'linkedin',  label: 'LinkedIn',    icon: '💼' },
-  { value: 'github',    label: 'GitHub',      icon: '🐙' },
-  { value: 'youtube',   label: 'YouTube',     icon: '▶️' },
-  { value: 'tiktok',    label: 'TikTok',      icon: '🎵' },
-  { value: 'whatsapp',  label: 'WhatsApp',    icon: '💬' },
-  { value: 'telegram',  label: 'Telegram',    icon: '✈️' },
-  { value: 'discord',   label: 'Discord',     icon: '🎮' },
-  { value: 'custom',    label: 'Custom',      icon: '🔗' },
+  { value: 'facebook',  label: 'Facebook'    },
+  { value: 'twitter',   label: 'Twitter / X' },
+  { value: 'instagram', label: 'Instagram'   },
+  { value: 'linkedin',  label: 'LinkedIn'    },
+  { value: 'github',    label: 'GitHub'      },
+  { value: 'youtube',   label: 'YouTube'     },
+  { value: 'tiktok',    label: 'TikTok'      },
+  { value: 'whatsapp',  label: 'WhatsApp'    },
+  { value: 'telegram',  label: 'Telegram'    },
+  { value: 'discord',   label: 'Discord'     },
+  { value: 'custom',    label: 'Custom'      },
 ];
 
 // ─── Country calling codes ────────────────────────────────────────────────────
@@ -69,14 +73,41 @@ const CharCounter = ({ value = '', max }) => {
 
 const ImageUpload = ({ value, onChange, label, hint }) => {
   const ref = useRef();
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await apiUploadFile(form);
+      onChange(res.data.url);
+    } catch {
+      toast.error('فشل رفع الصورة — حاول مرة أخرى', {
+        style: { background: '#111827', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <>
       <div
-        onClick={() => ref.current.click()}
+        onClick={() => !uploading && ref.current.click()}
         className="border-2 border-dashed border-gray-200 dark:border-white/10 hover:border-blue-500/50 rounded-2xl p-6
                    flex flex-col items-center gap-3 cursor-pointer transition-colors"
       >
-        {value ? (
+        {uploading ? (
+          <div className="flex flex-col items-center gap-2 text-gray-400 dark:text-slate-500">
+            <svg className="animate-spin w-7 h-7" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            <span className="text-xs">جاري الرفع...</span>
+          </div>
+        ) : value ? (
           <img src={value} alt="preview" className="max-h-40 rounded-xl object-contain" />
         ) : (
           <>
@@ -93,10 +124,7 @@ const ImageUpload = ({ value, onChange, label, hint }) => {
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={e => {
-          const file = e.target.files[0];
-          if (file) onChange(URL.createObjectURL(file));
-        }}
+        onChange={e => handleFile(e.target.files[0])}
       />
     </>
   );
@@ -357,6 +385,12 @@ const SocialLinksTab = ({ lang, links, setLinks }) => {
               {/* Drag handle — visual only */}
               <GripVertical size={16} className="text-gray-400 dark:text-slate-600 cursor-grab flex-shrink-0" />
 
+              {/* Platform brand icon */}
+              {(() => {
+                const PlatformIcon = SOCIAL_ICONS[link.platform] ?? Link2;
+                return <PlatformIcon size={18} className="text-gray-500 dark:text-slate-400 flex-shrink-0" />;
+              })()}
+
               {/* Platform dropdown */}
               <select
                 value={link.platform}
@@ -365,7 +399,7 @@ const SocialLinksTab = ({ lang, links, setLinks }) => {
                            text-gray-900 dark:text-white text-sm focus:border-blue-500 outline-none transition-all flex-shrink-0"
               >
                 {PLATFORMS.map(p => (
-                  <option key={p.value} value={p.value}>{p.icon} {p.label}</option>
+                  <option key={p.value} value={p.value}>{p.label}</option>
                 ))}
               </select>
 
@@ -620,7 +654,7 @@ const COLOR_ROWS = [
   },
 ];
 
-const ThemeTab = ({ lang, lightColors, darkColors, onLightChange, onDarkChange, onReset, arabicFont, englishFont, onArabicFontChange, onEnglishFontChange }) => {
+const ThemeTab = ({ lang, lightColors, darkColors, onLightChange, onDarkChange, onReset }) => {
   const ar = lang === 'ar';
   const [activeMode, setActiveMode] = useState('dark');
 
@@ -633,9 +667,9 @@ const ThemeTab = ({ lang, lightColors, darkColors, onLightChange, onDarkChange, 
       {/* Mode switcher */}
       <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-xl w-fit">
         {[
-          { mode: 'light', icon: '☀️', labelAr: 'الوضع الفاتح', labelEn: 'Light Mode' },
-          { mode: 'dark',  icon: '🌙', labelAr: 'الوضع الداكن', labelEn: 'Dark Mode'  },
-        ].map(({ mode, icon, labelAr, labelEn }) => (
+          { mode: 'light', Icon: Sun,  labelAr: 'الوضع الفاتح', labelEn: 'Light Mode' },
+          { mode: 'dark',  Icon: Moon, labelAr: 'الوضع الداكن', labelEn: 'Dark Mode'  },
+        ].map(({ mode, Icon, labelAr, labelEn }) => (
           <button
             key={mode}
             onClick={() => setActiveMode(mode)}
@@ -645,7 +679,7 @@ const ThemeTab = ({ lang, lightColors, darkColors, onLightChange, onDarkChange, 
                 : 'text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
             }`}
           >
-            <span>{icon}</span>
+            <Icon size={15} />
             {ar ? labelAr : labelEn}
           </button>
         ))}
@@ -705,10 +739,11 @@ const ThemeTab = ({ lang, lightColors, darkColors, onLightChange, onDarkChange, 
           <p className="text-gray-900 dark:text-white text-sm font-semibold">
             {ar ? 'معاينة مباشرة' : 'Live Preview'}
           </p>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20">
+          <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20">
+            {activeMode === 'light' ? <Sun size={12} /> : <Moon size={12} />}
             {ar
-              ? (activeMode === 'light' ? '☀️ الوضع الفاتح' : '🌙 الوضع الداكن')
-              : (activeMode === 'light' ? '☀️ Light Mode'   : '🌙 Dark Mode')}
+              ? (activeMode === 'light' ? 'الوضع الفاتح' : 'الوضع الداكن')
+              : (activeMode === 'light' ? 'Light Mode'   : 'Dark Mode')}
           </span>
         </div>
 
@@ -775,67 +810,10 @@ const ThemeTab = ({ lang, lightColors, darkColors, onLightChange, onDarkChange, 
         </p>
       </div>
 
-      {/* Font system */}
-      <div>
-        <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-4">
-          {ar ? 'نظام الخطوط' : 'Typography / Fonts'}
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-          {/* Arabic font */}
-          <div className="bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-2xl p-5 space-y-3">
-            <div>
-              <p className="text-gray-900 dark:text-white font-medium text-sm">{ar ? 'الخط العربي' : 'Arabic Font'}</p>
-              <p className="text-gray-400 dark:text-slate-500 text-xs mt-0.5">{ar ? 'يُطبَّق على كل النصوص العربية' : 'Applied to all Arabic text'}</p>
-            </div>
-            <select
-              value={arabicFont}
-              onChange={e => onArabicFontChange(e.target.value)}
-              className="w-full bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white text-sm focus:border-blue-500 outline-none transition-all"
-            >
-              {ARABIC_FONTS.map(f => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
-            <div
-              className="p-3 rounded-xl bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 text-center"
-              style={{ fontFamily: `'${arabicFont}', sans-serif` }}
-            >
-              <p className="text-gray-900 dark:text-white text-sm">نص تجريبي — نبني مستقبلك التقني</p>
-              <p className="text-gray-400 dark:text-slate-500 text-xs mt-1">١٢٣٤٥٦٧٨٩٠</p>
-            </div>
-          </div>
-
-          {/* English font */}
-          <div className="bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-2xl p-5 space-y-3">
-            <div>
-              <p className="text-gray-900 dark:text-white font-medium text-sm">{ar ? 'الخط الإنجليزي' : 'English Font'}</p>
-              <p className="text-gray-400 dark:text-slate-500 text-xs mt-0.5">{ar ? 'يُطبَّق على كل النصوص الإنجليزية' : 'Applied to all English text'}</p>
-            </div>
-            <select
-              value={englishFont}
-              onChange={e => onEnglishFontChange(e.target.value)}
-              className="w-full bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-xl px-4 py-3 text-gray-900 dark:text-white text-sm focus:border-blue-500 outline-none transition-all"
-            >
-              {ENGLISH_FONTS.map(f => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
-            <div
-              className="p-3 rounded-xl bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 text-center"
-              style={{ fontFamily: `'${englishFont}', sans-serif` }}
-            >
-              <p className="text-gray-900 dark:text-white text-sm">Preview — We Build Your Tech Future</p>
-              <p className="text-gray-400 dark:text-slate-500 text-xs mt-1">AaBbCcDd 1234567890</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Reset row */}
       <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
         <p className="text-xs text-gray-400 dark:text-slate-500">
-          {ar ? 'استعادة الألوان والخطوط الافتراضية' : 'Restore default colors & fonts'}
+          {ar ? 'استعادة الألوان الافتراضية' : 'Restore default colors'}
         </p>
         <button
           onClick={onReset}
@@ -857,8 +835,10 @@ const ThemeTab = ({ lang, lightColors, darkColors, onLightChange, onDarkChange, 
 const GeneralSettings = () => {
   const { lang } = useLang();
   const ar = lang === 'ar';
-  const { customColors, previewColors, saveCustomColors, resetColors, customFonts, previewFont: previewFontFn, saveFonts, resetFonts } = useTheme();
+  const { customColors, previewColors, saveCustomColors, resetColors } = useTheme();
   const [activeTab, setActiveTab] = useState('identity');
+  const [loading,   setLoading]   = useState(true);
+  const [saving,    setSaving]    = useState(false);
 
   // ── Per-tab state ──────────────────────────────────────────────────────────
 
@@ -898,8 +878,90 @@ const GeneralSettings = () => {
 
   const [lightColors,  setLightColors]  = useState(() => ({ ...customColors.light }));
   const [darkColors,   setDarkColors]   = useState(() => ({ ...customColors.dark  }));
-  const [arabicFont,   setArabicFont]   = useState(() => customFonts.arabic);
-  const [englishFont,  setEnglishFont]  = useState(() => customFonts.english);
+
+  const initialPayloadRef = useRef(null);
+
+  // ── Load settings from API on mount ───────────────────────────────────────
+
+  useEffect(() => {
+    apiGetSettings()
+      .then(res => {
+        const s = res.data ?? {};
+        // ── Tab 1: هوية الموقع ──────────────────────────────────────────
+        setIdentity(prev => ({
+          ...prev,
+          logo:       s.logo_url        ?? prev.logo,
+          favicon:    s.favicon         ?? prev.favicon,
+          siteNameAr: s.company_name    ?? prev.siteNameAr,
+          siteNameEn: s.company_name_en ?? prev.siteNameEn,
+          taglineAr:  s.tagline         ?? prev.taglineAr,
+          taglineEn:  s.tagline_en      ?? prev.taglineEn,
+        }));
+
+        // ── Tab 2: معلومات التواصل ──────────────────────────────────────
+        const savedWa = s.whatsapp ?? '';
+        let waCountry = '+967';
+        let waNumber  = savedWa;
+        if (savedWa) {
+          const match = COUNTRY_CODES.find(c => savedWa.startsWith(c.code));
+          if (match) { waCountry = match.code; waNumber = savedWa.slice(match.code.length).trim(); }
+        }
+        setContact(prev => ({
+          ...prev,
+          email:           s.email      ?? prev.email,
+          phone:           s.phone      ?? prev.phone,
+          whatsappCountry: waCountry,
+          whatsapp:        waNumber,
+          addressAr:       s.address    ?? prev.addressAr,
+          addressEn:       s.address_en ?? prev.addressEn,
+        }));
+
+        // ── Tab 3: روابط التواصل الاجتماعي (حقول منفصلة في البيانات) ──
+        const fromFields = [
+          { platform: 'facebook',  url: s.facebook  },
+          { platform: 'twitter',   url: s.twitter   },
+          { platform: 'instagram', url: s.instagram },
+          { platform: 'linkedin',  url: s.linkedin  },
+          { platform: 'github',    url: s.github    },
+          { platform: 'youtube',   url: s.youtube   },
+          { platform: 'tiktok',    url: s.tiktok    },
+          { platform: 'telegram',  url: s.telegram  },
+          { platform: 'discord',   url: s.discord   },
+        ].filter(l => l.url).map((l, i) => ({ id: Date.now() + i, ...l, active: true }));
+        if (fromFields.length > 0) setSocialLinks(fromFields);
+
+        // ── Tab 4: SEO ──────────────────────────────────────────────────
+        setSeo(prev => ({
+          ...prev,
+          metaTitleAr: s.meta_title          ?? prev.metaTitleAr,
+          metaTitleEn: s.meta_title_en       ?? prev.metaTitleEn,
+          metaDescAr:  s.meta_description    ?? prev.metaDescAr,
+          metaDescEn:  s.meta_description_en ?? prev.metaDescEn,
+          ogImage:     s.og_image            ?? prev.ogImage,
+          keywords: Array.isArray(s.keywords)
+            ? s.keywords
+            : (typeof s.keywords === 'string' && s.keywords
+                ? s.keywords.split(',').map(k => k.trim()).filter(Boolean)
+                : prev.keywords),
+        }));
+
+        // ── Tab 5: الألوان والخطوط ──────────────────────────────────────
+        if (s.theme_light) {
+          try {
+            const lc = typeof s.theme_light === 'string' ? JSON.parse(s.theme_light) : s.theme_light;
+            setLightColors(prev => ({ ...prev, ...lc }));
+          } catch {}
+        }
+        if (s.theme_dark) {
+          try {
+            const dc = typeof s.theme_dark === 'string' ? JSON.parse(s.theme_dark) : s.theme_dark;
+            setDarkColors(prev => ({ ...prev, ...dc }));
+          } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   const setField = (setter) => (key, value) =>
     setter(prev => ({ ...prev, [key]: value }));
@@ -924,19 +986,44 @@ const GeneralSettings = () => {
     resetColors();
     setLightColors({ ...DEFAULT_LIGHT });
     setDarkColors({ ...DEFAULT_DARK });
-    resetFonts();
-    setArabicFont(DEFAULT_FONTS.arabic);
-    setEnglishFont(DEFAULT_FONTS.english);
   };
 
-  const onArabicFontChange = (font) => {
-    setArabicFont(font);
-    previewFontFn(font, englishFont);
-  };
-
-  const onEnglishFontChange = (font) => {
-    setEnglishFont(font);
-    previewFontFn(arabicFont, font);
+  // Builds the full settings payload from current state.
+  // Used both for saving and for dirty-tracking comparisons.
+  const buildPayload = () => {
+    const sf = (p) => socialLinks.find(l => l.platform === p && l.url)?.url ?? null;
+    return {
+      company_name:        identity.siteNameAr,
+      company_name_en:     identity.siteNameEn,
+      tagline:             identity.taglineAr,
+      tagline_en:          identity.taglineEn,
+      logo_url:            identity.logo    || null,
+      favicon:             identity.favicon || null,
+      email:               contact.email,
+      phone:               contact.phone,
+      whatsapp:            contact.whatsapp
+        ? `${contact.whatsappCountry}${contact.whatsapp}`.trim()
+        : null,
+      address:             contact.addressAr,
+      address_en:          contact.addressEn,
+      facebook:            sf('facebook'),
+      twitter:             sf('twitter'),
+      instagram:           sf('instagram'),
+      linkedin:            sf('linkedin'),
+      github:              sf('github'),
+      youtube:             sf('youtube'),
+      tiktok:              sf('tiktok'),
+      telegram:            sf('telegram'),
+      discord:             sf('discord'),
+      meta_title:          seo.metaTitleAr,
+      meta_title_en:       seo.metaTitleEn,
+      meta_description:    seo.metaDescAr,
+      meta_description_en: seo.metaDescEn,
+      keywords:            seo.keywords.join(', '),
+      og_image:            seo.ogImage || null,
+      theme_light:         lightColors,
+      theme_dark:          darkColors,
+    };
   };
 
   const toastStyle = {
@@ -975,14 +1062,36 @@ const GeneralSettings = () => {
     return true;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
+    setSaving(true);
     saveCustomColors(lightColors, darkColors);
-    saveFonts(arabicFont, englishFont);
-    toast.success(
-      ar ? 'تم حفظ الإعدادات بنجاح!' : 'Settings saved successfully!',
-      { ...toastStyle, iconTheme: { primary: '#3b82f6', secondary: '#fff' } },
-    );
+    try {
+      const payload = buildPayload();
+      const toSend  = getDiff(payload, initialPayloadRef.current);
+
+      if (Object.keys(toSend).length === 0) {
+        toast(ar ? 'لا توجد تغييرات للحفظ' : 'No changes to save', {
+          icon: 'ℹ️',
+          style: toastStyle.style,
+        });
+        return;
+      }
+
+      await apiUpdateSettings(toSend);
+      initialPayloadRef.current = payload;
+      toast.success(
+        ar ? 'تم حفظ الإعدادات بنجاح!' : 'Settings saved successfully!',
+        { ...toastStyle, iconTheme: { primary: '#3b82f6', secondary: '#fff' } },
+      );
+    } catch (err) {
+      toast.error(
+        err?.message ?? (ar ? 'فشل حفظ الإعدادات' : 'Failed to save settings'),
+        toastStyle,
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const tabContent = {
@@ -998,13 +1107,21 @@ const GeneralSettings = () => {
         onLightChange={onLightChange}
         onDarkChange={onDarkChange}
         onReset={onResetColors}
-        arabicFont={arabicFont}
-        englishFont={englishFont}
-        onArabicFontChange={onArabicFontChange}
-        onEnglishFontChange={onEnglishFontChange}
       />
     ),
   };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-3 text-gray-400 dark:text-slate-500">
+        <svg className="animate-spin w-8 h-8" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+        <span className="text-sm">{ar ? 'جاري تحميل الإعدادات...' : 'Loading settings...'}</span>
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -1064,13 +1181,24 @@ const GeneralSettings = () => {
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-white/5 flex justify-end">
           <button
             onClick={handleSave}
+            disabled={saving}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white
                        px-6 py-3 rounded-xl font-semibold transition-all duration-200
                        shadow-[0_0_20px_rgba(59,130,246,0.2)]
-                       hover:shadow-[0_0_30px_rgba(59,130,246,0.35)] hover:-translate-y-0.5"
+                       hover:shadow-[0_0_30px_rgba(59,130,246,0.35)] hover:-translate-y-0.5
+                       disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
-            <Save size={18} />
-            {ar ? 'حفظ التغييرات' : 'Save Changes'}
+            {saving ? (
+              <svg className="animate-spin w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+            ) : (
+              <Save size={18} />
+            )}
+            {saving
+              ? (ar ? 'جاري الحفظ...' : 'Saving...')
+              : (ar ? 'حفظ التغييرات' : 'Save Changes')}
           </button>
         </div>
       </div>

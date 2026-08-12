@@ -1,5 +1,5 @@
 // src/pages/admin/ManageArticles.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import {
@@ -7,6 +7,7 @@ import {
   CheckCircle, Clock, ExternalLink
 } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
+import { apiGetPosts, apiCreatePost, apiUpdatePost, apiDeletePost } from '../../services/api';
 
 // ─── Shared Style ─────────────────────────────────────────────────────────
 const inputCls =
@@ -18,46 +19,53 @@ const toastStyle = {
   style: { background: '#111827', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
 };
 
-// ─── Mock Data ────────────────────────────────────────────────────────────
-const INITIAL_ARTICLES = [
-  {
-    id: '1',
-    titleAr: 'مستقبل تطوير الويب مع React 19',
-    titleEn: 'The Future of Web Development with React 19',
-    excerptAr: 'نظرة شاملة على أحدث الميزات وكيف ستغير شكل بناء واجهات المستخدم في المشاريع القادمة.',
-    excerptEn: 'A comprehensive look at the latest features and how they will change UI building.',
-    contentAr: 'هنا يكتب المحتوى الكامل للمقال...',
-    contentEn: 'Full article content goes here...',
-    imageUrl: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=600&auto=format&fit=crop',
-    date: '2024-10-15',
-    status: 'published',
-  },
-  {
-    id: '2',
-    titleAr: 'أهمية الـ Headless CMS للشركات',
-    titleEn: 'The Importance of Headless CMS for Businesses',
-    excerptAr: 'لماذا تتجه الشركات التقنية الكبرى لفصل الواجهات الأمامية عن لوحات التحكم؟',
-    excerptEn: 'Why are major tech companies separating frontends from dashboards?',
-    contentAr: 'هنا يكتب المحتوى الكامل للمقال...',
-    contentEn: 'Full article content goes here...',
-    imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=600&auto=format&fit=crop',
-    date: '2024-11-02',
-    status: 'draft',
-  }
-];
+// ── Field mappers ──────────────────────────────────────────────────────────
+const toForm = (p) => ({
+  id:        p.id,
+  titleAr:   p.title      ?? '',
+  titleEn:   p.title_en   ?? '',
+  excerptAr: p.excerpt    ?? '',
+  excerptEn: p.excerpt_en ?? '',
+  contentAr: p.content    ?? '',
+  contentEn: p.content_en ?? '',
+  imageUrl:  p.image_url  ?? '',
+  date:      p.published_at ? p.published_at.split('T')[0] : (p.date ?? ''),
+  status:    p.status     ?? 'draft',
+});
+
+const toApi = (f) => ({
+  title:      f.titleAr,
+  title_en:   f.titleEn,
+  excerpt:    f.excerptAr,
+  excerpt_en: f.excerptEn,
+  content:    f.contentAr,
+  content_en: f.contentEn,
+  image_url:  f.imageUrl,
+  date:       f.date,
+  status:     f.status,
+});
 
 const ManageArticles = () => {
   const { lang } = useLang();
   const ar = lang === 'ar';
-  const [articles, setArticles] = useState(INITIAL_ARTICLES);
+  const [articles, setArticles] = useState([]);
+  const [loading, setLoading]   = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('add');
+  const [modalMode, setModalMode]     = useState('add');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [saving, setSaving]           = useState(false);
 
   const [formData, setFormData] = useState({
     id: '', titleAr: '', titleEn: '', excerptAr: '', excerptEn: '', contentAr: '', contentEn: '', imageUrl: '', date: '', status: 'draft'
   });
+
+  useEffect(() => {
+    apiGetPosts()
+      .then(res => setArticles((res.data ?? []).map(toForm)))
+      .catch(() => setArticles([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const openAdd = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -72,28 +80,53 @@ const ManageArticles = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.titleAr.trim() || !formData.titleEn.trim()) {
       toast.error(ar ? 'يرجى إدخال عنوان المقال' : 'Article title is required', toastStyle);
       return;
     }
-
-    if (modalMode === 'add') {
-      setArticles(prev => [{ ...formData, id: Date.now().toString() }, ...prev]);
-      toast.success(ar ? 'تم نشر/حفظ المقال بنجاح' : 'Article saved successfully', toastStyle);
-    } else {
-      setArticles(prev => prev.map(a => a.id === formData.id ? formData : a));
-      toast.success(ar ? 'تم تحديث المقال' : 'Article updated', toastStyle);
+    setSaving(true);
+    try {
+      if (modalMode === 'add') {
+        const res = await apiCreatePost(toApi(formData));
+        setArticles(prev => [toForm(res.data), ...prev]);
+        toast.success(ar ? 'تم نشر/حفظ المقال بنجاح' : 'Article saved successfully', toastStyle);
+      } else {
+        const res = await apiUpdatePost(formData.id, toApi(formData));
+        setArticles(prev => prev.map(a => a.id === formData.id ? toForm(res.data) : a));
+        toast.success(ar ? 'تم تحديث المقال' : 'Article updated', toastStyle);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.error(err?.message ?? (ar ? 'حدث خطأ' : 'An error occurred'), toastStyle);
+    } finally {
+      setSaving(false);
     }
-    setIsModalOpen(false);
   };
 
-  const confirmDelete = (id) => {
-    setArticles(prev => prev.filter(a => a.id !== id));
-    setDeleteConfirm(null);
-    toast.success(ar ? 'تم حذف المقال' : 'Article deleted', toastStyle);
+  const confirmDelete = async (id) => {
+    try {
+      await apiDeletePost(id);
+      setArticles(prev => prev.filter(a => a.id !== id));
+      setDeleteConfirm(null);
+      toast.success(ar ? 'تم حذف المقال' : 'Article deleted', toastStyle);
+    } catch {
+      toast.error(ar ? 'فشل الحذف' : 'Delete failed', toastStyle);
+    }
   };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-3 text-gray-400 dark:text-slate-500">
+        <svg className="animate-spin w-8 h-8" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+        <span className="text-sm">{ar ? 'جاري تحميل المقالات...' : 'Loading articles...'}</span>
+      </div>
+    </div>
+  );
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto space-y-6">
@@ -117,6 +150,11 @@ const ManageArticles = () => {
       </div>
 
       {/* ─── Articles Grid ─── */}
+      {articles.length === 0 && (
+        <div className="text-center py-16 text-gray-400 dark:text-slate-500">
+          {ar ? 'لا توجد مقالات بعد. أضف مقالاً جديداً!' : 'No articles yet. Add your first article!'}
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {articles.map((item) => (
           <div key={item.id} className="bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/5 rounded-2xl overflow-hidden flex flex-col transition-all hover:border-gray-300 dark:hover:border-white/10 hover:shadow-lg dark:hover:shadow-xl dark:hover:shadow-black/50 group shadow-sm dark:shadow-none">
@@ -275,8 +313,8 @@ const ManageArticles = () => {
                   <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 rounded-xl text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
                     {ar ? 'إلغاء' : 'Cancel'}
                   </button>
-                  <button type="submit" className="px-5 py-2.5 rounded-xl text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/20 font-medium">
-                    {ar ? 'حفظ المقال' : 'Save Article'}
+                  <button type="submit" disabled={saving} className="px-5 py-2.5 rounded-xl text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/20 font-medium disabled:opacity-60 disabled:cursor-not-allowed">
+                    {saving ? (ar ? 'جاري الحفظ...' : 'Saving...') : (ar ? 'حفظ المقال' : 'Save Article')}
                   </button>
                 </div>
 

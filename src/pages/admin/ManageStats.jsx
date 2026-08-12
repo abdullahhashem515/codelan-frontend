@@ -1,9 +1,12 @@
 // src/pages/admin/ManageStats.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Eye, EyeOff } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
+import { apiGetStats, apiCreateStat, apiUpdateStat, apiDeleteStat } from '../../services/api';
+import DynamicIcon from '../../components/DynamicIcon';
+import IconPicker from '../../components/IconPicker';
 
 // ─── Shared style ─────────────────────────────────────────────────────────────
 
@@ -16,14 +19,27 @@ const toastStyle = {
   style: { background: '#111827', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
 };
 
-// ─── Mock data (Hero section stats) ──────────────────────────────────────────
+// ── Field mappers ────────────────────────────────────────────────────────────
+const toForm = (s) => ({
+  id:       s.id,
+  labelAr:  s.label    ?? '',
+  labelEn:  s.label_en ?? '',
+  value:    String(s.value ?? ''),
+  suffix:   s.suffix   ?? '+',
+  prefix:   s.prefix   ?? '',
+  icon:     s.icon     ?? '📊',
+  isActive: !!s.is_active,
+});
 
-const INITIAL_STATS = [
-  { id: 1, labelAr: 'مشروع منجز',         labelEn: 'Projects Delivered', value: '20', suffix: '+', prefix: '', icon: '📁', isActive: true },
-  { id: 2, labelAr: 'عميل راضٍ',           labelEn: 'Happy Clients',      value: '15', suffix: '+', prefix: '', icon: '🤝', isActive: true },
-  { id: 3, labelAr: 'سنوات خبرة',          labelEn: 'Years Experience',   value: '3',  suffix: '+', prefix: '', icon: '⏳', isActive: true },
-  { id: 4, labelAr: 'معدل رضا العملاء',   labelEn: 'Client Satisfaction', value: '99', suffix: '%', prefix: '', icon: '⭐', isActive: true },
-];
+const toApi = (f) => ({
+  label:     f.labelAr,
+  label_en:  f.labelEn,
+  value:     f.value,
+  suffix:    f.suffix,
+  prefix:    f.prefix,
+  icon:      f.icon,
+  is_active: f.isActive,
+});
 
 const EMPTY_FORM = {
   id: null, labelAr: '', labelEn: '', value: '', suffix: '+', prefix: '', icon: '📊', isActive: true,
@@ -35,11 +51,19 @@ const ManageStats = () => {
   const { lang } = useLang();
   const ar = lang === 'ar';
 
-  const [stats, setStats]               = useState(INITIAL_STATS);
+  const [stats, setStats]               = useState([]);
+  const [loading, setLoading]           = useState(true);
   const [isModalOpen, setIsModalOpen]   = useState(false);
   const [modalMode, setModalMode]       = useState('add');
   const [formData, setFormData]         = useState(EMPTY_FORM);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  useEffect(() => {
+    apiGetStats()
+      .then(res => setStats((res.data ?? []).map(toForm)))
+      .catch(() => setStats([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const updateForm = (key, val) => setFormData(prev => ({ ...prev, [key]: val }));
 
@@ -55,30 +79,48 @@ const ManageStats = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.labelAr.trim() || !formData.labelEn.trim() || !formData.value.trim()) {
       toast.error(ar ? 'يرجى ملء الحقول المطلوبة.' : 'Please fill required fields.', toastStyle);
       return;
     }
-    if (modalMode === 'add') {
-      setStats(prev => [...prev, { ...formData, id: Date.now() }]);
-      toast.success(ar ? 'تمت إضافة الإحصائية.' : 'Stat added.', toastStyle);
-    } else {
-      setStats(prev => prev.map(s => s.id === formData.id ? formData : s));
-      toast.success(ar ? 'تم تحديث الإحصائية.' : 'Stat updated.', toastStyle);
+    try {
+      if (modalMode === 'add') {
+        const res = await apiCreateStat(toApi(formData));
+        setStats(prev => [...prev, toForm(res.data)]);
+        toast.success(ar ? 'تمت إضافة الإحصائية.' : 'Stat added.', toastStyle);
+      } else {
+        const res = await apiUpdateStat(formData.id, toApi(formData));
+        setStats(prev => prev.map(s => s.id === formData.id ? toForm(res.data) : s));
+        toast.success(ar ? 'تم تحديث الإحصائية.' : 'Stat updated.', toastStyle);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.error(err?.message ?? (ar ? 'حدث خطأ' : 'An error occurred'), toastStyle);
     }
-    setIsModalOpen(false);
   };
 
-  const confirmDelete = (id) => {
-    setStats(prev => prev.filter(s => s.id !== id));
-    setDeleteConfirm(null);
-    toast.success(ar ? 'تم حذف الإحصائية.' : 'Stat deleted.', toastStyle);
+  const confirmDelete = async (id) => {
+    try {
+      await apiDeleteStat(id);
+      setStats(prev => prev.filter(s => s.id !== id));
+      setDeleteConfirm(null);
+      toast.success(ar ? 'تم حذف الإحصائية.' : 'Stat deleted.', toastStyle);
+    } catch {
+      toast.error(ar ? 'فشل الحذف' : 'Delete failed', toastStyle);
+    }
   };
 
-  const toggleActive = (id) =>
-    setStats(prev => prev.map(s => s.id === id ? { ...s, isActive: !s.isActive } : s));
+  const toggleActive = async (id) => {
+    const item = stats.find(s => s.id === id);
+    if (!item) return;
+    const updated = { ...item, isActive: !item.isActive };
+    setStats(prev => prev.map(s => s.id === id ? updated : s));
+    try { await apiUpdateStat(id, toApi(updated)); } catch {
+      setStats(prev => prev.map(s => s.id === id ? item : s));
+    }
+  };
 
   const swap = (arr, i, j) => {
     const next = [...arr];
@@ -88,6 +130,18 @@ const ManageStats = () => {
 
   const moveUp   = (idx) => { if (idx > 0)                  setStats(prev => swap(prev, idx, idx - 1)); };
   const moveDown = (idx) => { if (idx < stats.length - 1)   setStats(prev => swap(prev, idx, idx + 1)); };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-3 text-gray-400 dark:text-slate-500">
+        <svg className="animate-spin w-8 h-8" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+        <span className="text-sm">{ar ? 'جاري التحميل...' : 'Loading...'}</span>
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -162,7 +216,7 @@ const ManageStats = () => {
                 {/* Preview card */}
                 <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-[#111827] border border-gray-200 dark:border-white/10
                                 flex flex-col items-center justify-center gap-0.5 flex-shrink-0">
-                  <span className="text-xl leading-none">{stat.icon}</span>
+                  <span className="text-blue-500 dark:text-blue-400 leading-none"><DynamicIcon emoji={stat.icon} size={18} /></span>
                   <span className="text-blue-500 dark:text-blue-400 font-mono font-bold text-xs leading-none">
                     {stat.prefix}{stat.value}{stat.suffix}
                   </span>
@@ -344,20 +398,9 @@ const ManageStats = () => {
                   {/* Icon */}
                   <div>
                     <label className="text-gray-500 dark:text-slate-400 text-xs mb-1.5 block">
-                      {ar ? 'الأيقونة (emoji)' : 'Icon (emoji)'}
+                      {ar ? 'الأيقونة' : 'Icon'}
                     </label>
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl w-12 h-12 flex items-center justify-center bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-xl">
-                        {formData.icon || '📊'}
-                      </span>
-                      <input
-                        className={`${inputCls} flex-1`}
-                        value={formData.icon}
-                        onChange={e => updateForm('icon', e.target.value)}
-                        placeholder="📊"
-                        maxLength={4}
-                      />
-                    </div>
+                    <IconPicker lang={lang} value={formData.icon} onChange={(emoji) => updateForm('icon', emoji)} />
                   </div>
 
                   {/* Active toggle */}

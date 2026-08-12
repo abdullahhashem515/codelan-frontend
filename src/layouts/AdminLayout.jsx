@@ -1,7 +1,11 @@
 // src/layouts/AdminLayout.jsx
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, Trophy, Layers, Sun, Moon, Menu, X } from 'lucide-react';
+import {
+  LayoutDashboard, Wrench, FolderKanban, Layers, Inbox, BarChart3, Trophy,
+  FlaskConical, MessageCircle, Paperclip, HelpCircle, Settings, Globe,
+  Sun, Moon, Menu, X,
+} from 'lucide-react';
 import { useLang } from '../context/LangContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -21,19 +25,19 @@ const AdminLayout = () => {
   }, [location.pathname]);
 
   const menuItems = [
-    { path: '/admin',              icon: '📊',      labelAr: 'لوحة القيادة',    labelEn: 'Dashboard'    },
-    { path: '/admin/services',     icon: '🛠️',     labelAr: 'إدارة الخدمات',   labelEn: 'Services'     },
-    { path: '/admin/projects',     icon: '📁',      labelAr: 'إدارة المشاريع',  labelEn: 'Projects'     },
-    { path: '/admin/tech-stack',   icon: Layers,    labelAr: 'إدارة التقنيات',  labelEn: 'Tech Stack'   },
-    { path: '/admin/requests',     icon: '📬',      labelAr: 'طلبات العملاء',   labelEn: 'Requests'     },
-    { path: '/admin/stats',        icon: BarChart3, labelAr: 'الإحصائيات',      labelEn: 'Stats'        },
-    { path: '/admin/achievements', icon: Trophy,    labelAr: 'الإنجازات',       labelEn: 'Achievements' },
-    { path: '/admin/methodology',  icon: '🔬',      labelAr: 'منهجية العمل',    labelEn: 'Methodology'  },
-    { path: '/admin/testimonials', icon: '💬',      labelAr: 'شهادات العملاء',  labelEn: 'Testimonials' },
-    { path: '/admin/articles',     icon: '📎',      labelAr: 'إدارة المقالات',  labelEn: 'Articles'     },
-    { path: '/admin/faq',          icon: '?',       labelAr: 'الأسئلة الشائعة', labelEn: 'FAQ'          },
-    { path: '/admin/settings',     icon: '⚙️',      labelAr: 'الإعدادات',       labelEn: 'Settings'     },
-    { path: '/',                   icon: '🌐',      labelAr: 'العودة للموقع',   labelEn: 'Back to Site' },
+    { path: '/admin',              icon: LayoutDashboard, labelAr: 'لوحة القيادة',    labelEn: 'Dashboard'    },
+    { path: '/admin/services',     icon: Wrench,          labelAr: 'إدارة الخدمات',   labelEn: 'Services'     },
+    { path: '/admin/projects',     icon: FolderKanban,    labelAr: 'إدارة المشاريع',  labelEn: 'Projects'     },
+    { path: '/admin/tech-stack',   icon: Layers,          labelAr: 'إدارة التقنيات',  labelEn: 'Tech Stack'   },
+    { path: '/admin/requests',     icon: Inbox,           labelAr: 'طلبات العملاء',   labelEn: 'Requests'     },
+    { path: '/admin/stats',        icon: BarChart3,       labelAr: 'الإحصائيات',      labelEn: 'Stats'        },
+    { path: '/admin/achievements', icon: Trophy,          labelAr: 'الإنجازات',       labelEn: 'Achievements' },
+    { path: '/admin/methodology',  icon: FlaskConical,    labelAr: 'منهجية العمل',    labelEn: 'Methodology'  },
+    { path: '/admin/testimonials', icon: MessageCircle,   labelAr: 'شهادات العملاء',  labelEn: 'Testimonials' },
+    { path: '/admin/articles',     icon: Paperclip,       labelAr: 'إدارة المقالات',  labelEn: 'Articles'     },
+    { path: '/admin/faq',          icon: HelpCircle,      labelAr: 'الأسئلة الشائعة', labelEn: 'FAQ'          },
+    { path: '/admin/settings',     icon: Settings,        labelAr: 'الإعدادات',       labelEn: 'Settings'     },
+    { path: '/',                   icon: Globe,           labelAr: 'العودة للموقع',   labelEn: 'Back to Site' },
   ];
 
   const handleLogout = () => {
@@ -89,7 +93,7 @@ const AdminLayout = () => {
         <nav className="flex-1 py-6 px-4 space-y-1.5 overflow-y-auto">
           {menuItems.map((item, idx) => {
             const isActive = location.pathname === item.path;
-            const IconComponent = typeof item.icon !== 'string' ? item.icon : null;
+            const Icon = item.icon;
             return (
               <Link
                 key={idx}
@@ -100,10 +104,7 @@ const AdminLayout = () => {
                     : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
-                {IconComponent
-                  ? <IconComponent size={18} className="flex-shrink-0" />
-                  : <span className="text-lg flex-shrink-0">{item.icon}</span>
-                }
+                <Icon size={18} className="flex-shrink-0" />
                 <span className="font-medium text-sm">{lang === 'ar' ? item.labelAr : item.labelEn}</span>
               </Link>
             );

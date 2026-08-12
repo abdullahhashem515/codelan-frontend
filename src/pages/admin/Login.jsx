@@ -8,22 +8,27 @@ import { useAuth } from '../../context/AuthContext';
 const Login = () => {
   const { lang } = useLang();
   const { isAuthenticated, login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
   const navigate = useNavigate();
 
-  if (isAuthenticated) {
-    return <Navigate to="/admin" replace />;
-  }
+  if (isAuthenticated) return <Navigate to="/admin" replace />;
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (email === 'admin@codelan.dev' && password === 'password') {
-      login();
+    setError('');
+    setLoading(true);
+    try {
+      await login(email, password);
       navigate('/admin');
-    } else {
-      setError(lang === 'ar' ? 'بيانات الدخول غير صحيحة!' : 'Invalid credentials!');
+    } catch (err) {
+      const firstFieldError = err?.errors ? err.errors[Object.keys(err.errors)[0]]?.[0] : null;
+      const msg = firstFieldError || err?.message;
+      setError(msg || (lang === 'ar' ? 'بيانات الدخول غير صحيحة!' : 'Invalid credentials!'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -45,7 +50,7 @@ const Login = () => {
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gray-100 dark:bg-[#111827] border border-blue-500/20 mb-4 shadow-[0_0_20px_rgba(59,130,246,0.2)]">
             <svg width="32" height="32" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <text x="50" y="65" fontFamily="monospace" fontSize="50" fontWeight="700" textAnchor="middle" fill="#3b82f6">CL</text>
+              <text x="50" y="65" fontFamily="monospace" fontSize="50" fontWeight="700" textAnchor="middle" fill="#1d4ed8">CL</text>
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -64,34 +69,51 @@ const Login = () => {
           )}
 
           <div>
-            <label className="block text-gray-500 dark:text-slate-400 text-sm mb-2">{lang === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}</label>
+            <label className="block text-gray-500 dark:text-slate-400 text-sm mb-2">
+              {lang === 'ar' ? 'البريد الإلكتروني' : 'Email Address'}
+            </label>
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               className={inputCls}
               placeholder="admin@codelan.dev"
               required
+              disabled={loading}
             />
           </div>
 
           <div>
-            <label className="block text-gray-500 dark:text-slate-400 text-sm mb-2">{lang === 'ar' ? 'كلمة المرور' : 'Password'}</label>
+            <label className="block text-gray-500 dark:text-slate-400 text-sm mb-2">
+              {lang === 'ar' ? 'كلمة المرور' : 'Password'}
+            </label>
             <input
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               className={inputCls}
               placeholder="••••••••"
               required
+              disabled={loading}
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] mt-4"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-bold transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] mt-4 flex items-center justify-center gap-2"
           >
-            {lang === 'ar' ? 'دخول النظام' : 'Sign In'}
+            {loading ? (
+              <>
+                <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                {lang === 'ar' ? 'جاري الدخول...' : 'Signing in...'}
+              </>
+            ) : (
+              lang === 'ar' ? 'دخول النظام' : 'Sign In'
+            )}
           </button>
         </form>
 

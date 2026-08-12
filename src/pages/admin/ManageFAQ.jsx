@@ -1,5 +1,5 @@
 // src/pages/admin/ManageFAQ.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import {
@@ -7,6 +7,7 @@ import {
   ChevronUp, ChevronDown, Eye, EyeOff
 } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
+import { apiGetFAQ, apiCreateFAQ, apiUpdateFAQ, apiDeleteFAQ } from '../../services/api';
 
 // ─── Shared Style ─────────────────────────────────────────────────────────
 const inputCls =
@@ -18,30 +19,29 @@ const toastStyle = {
   style: { background: '#111827', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' },
 };
 
-// ─── Mock Data ────────────────────────────────────────────────────────────
-const INITIAL_FAQ = [
-  {
-    id: '1',
-    questionAr: 'كم يستغرق بناء تطبيق موبايل متكامل؟',
-    questionEn: 'How long does it take to build a full mobile app?',
-    answerAr: 'يعتمد ذلك على حجم ومميزات التطبيق، ولكن في المتوسط يستغرق تطوير تطبيق متكامل من شهرين إلى ثلاثة أشهر شاملة التصميم والبرمجة والاختبار.',
-    answerEn: 'It depends on the scope and features, but on average, it takes 2 to 3 months including design, development, and testing.',
-    isActive: true,
-  },
-  {
-    id: '2',
-    questionAr: 'هل تقدمون خدمات الاستضافة والدعم الفني بعد التسليم؟',
-    questionEn: 'Do you provide hosting and support after delivery?',
-    answerAr: 'نعم، نقدم خطط استضافة سحابية متقدمة ودعم فني مستمر لضمان استقرار مشروعك وحمايته من أي ثغرات أمنية.',
-    answerEn: 'Yes, we provide advanced cloud hosting plans and ongoing technical support to ensure your project stability.',
-    isActive: true,
-  }
-];
+// ── Field mappers ────────────────────────────────────────────────────────────
+const toForm = (f) => ({
+  id:         f.id,
+  questionAr: f.question    ?? '',
+  questionEn: f.question_en ?? '',
+  answerAr:   f.answer      ?? '',
+  answerEn:   f.answer_en   ?? '',
+  isActive:   !!f.is_active,
+});
+
+const toApi = (f) => ({
+  question:    f.questionAr,
+  question_en: f.questionEn,
+  answer:      f.answerAr,
+  answer_en:   f.answerEn,
+  is_active:   f.isActive,
+});
 
 const ManageFAQ = () => {
   const { lang } = useLang();
   const ar = lang === 'ar';
-  const [faqs, setFaqs] = useState(INITIAL_FAQ);
+  const [faqs, setFaqs]     = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
@@ -50,6 +50,13 @@ const ManageFAQ = () => {
   const [formData, setFormData] = useState({
     id: '', questionAr: '', questionEn: '', answerAr: '', answerEn: '', isActive: true
   });
+
+  useEffect(() => {
+    apiGetFAQ()
+      .then(res => setFaqs((res.data ?? []).map(toForm)))
+      .catch(() => setFaqs([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   const openAdd = () => {
     setFormData({ id: '', questionAr: '', questionEn: '', answerAr: '', answerEn: '', isActive: true });
@@ -63,32 +70,48 @@ const ManageFAQ = () => {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.questionAr.trim() || !formData.questionEn.trim()) {
       toast.error(ar ? 'يرجى إدخال السؤال' : 'Question is required', toastStyle);
       return;
     }
-
-    if (modalMode === 'add') {
-      setFaqs(prev => [...prev, { ...formData, id: Date.now().toString() }]);
-      toast.success(ar ? 'تمت الإضافة بنجاح' : 'Added successfully', toastStyle);
-    } else {
-      setFaqs(prev => prev.map(f => f.id === formData.id ? formData : f));
-      toast.success(ar ? 'تم التحديث بنجاح' : 'Updated successfully', toastStyle);
+    try {
+      if (modalMode === 'add') {
+        const res = await apiCreateFAQ(toApi(formData));
+        setFaqs(prev => [...prev, toForm(res.data)]);
+        toast.success(ar ? 'تمت الإضافة بنجاح' : 'Added successfully', toastStyle);
+      } else {
+        const res = await apiUpdateFAQ(formData.id, toApi(formData));
+        setFaqs(prev => prev.map(f => f.id === formData.id ? toForm(res.data) : f));
+        toast.success(ar ? 'تم التحديث بنجاح' : 'Updated successfully', toastStyle);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      toast.error(err?.message ?? (ar ? 'حدث خطأ' : 'An error occurred'), toastStyle);
     }
-    setIsModalOpen(false);
   };
 
-  const confirmDelete = (id) => {
-    setFaqs(prev => prev.filter(f => f.id !== id));
-    setDeleteConfirm(null);
-    toast.success(ar ? 'تم الحذف' : 'Deleted', toastStyle);
+  const confirmDelete = async (id) => {
+    try {
+      await apiDeleteFAQ(id);
+      setFaqs(prev => prev.filter(f => f.id !== id));
+      setDeleteConfirm(null);
+      toast.success(ar ? 'تم الحذف' : 'Deleted', toastStyle);
+    } catch {
+      toast.error(ar ? 'فشل الحذف' : 'Delete failed', toastStyle);
+    }
   };
 
-  const toggleActive = (id) => {
-    setFaqs(prev => prev.map(f => f.id === id ? { ...f, isActive: !f.isActive } : f));
+  const toggleActive = async (id) => {
+    const item = faqs.find(f => f.id === id);
+    if (!item) return;
+    const updated = { ...item, isActive: !item.isActive };
+    setFaqs(prev => prev.map(f => f.id === id ? updated : f));
     toast.success(ar ? 'تم تغيير الحالة' : 'Status updated', toastStyle);
+    try { await apiUpdateFAQ(id, toApi(updated)); } catch {
+      setFaqs(prev => prev.map(f => f.id === id ? item : f));
+    }
   };
 
   const swap = (arr, i, j) => {
@@ -99,6 +122,18 @@ const ManageFAQ = () => {
 
   const moveUp   = (idx) => { if (idx > 0)                setFaqs(prev => swap(prev, idx, idx - 1)); };
   const moveDown = (idx) => { if (idx < faqs.length - 1) setFaqs(prev => swap(prev, idx, idx + 1)); };
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="flex flex-col items-center gap-3 text-gray-400 dark:text-slate-500">
+        <svg className="animate-spin w-8 h-8" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+        </svg>
+        <span className="text-sm">{ar ? 'جاري التحميل...' : 'Loading...'}</span>
+      </div>
+    </div>
+  );
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto space-y-6">
