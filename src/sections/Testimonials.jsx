@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 import { useLang } from '../context/LangContext';
@@ -20,11 +20,7 @@ const CARD_COLORS = [
   'from-cyan-600 to-cyan-400',
 ];
 
-const FALLBACK = [
-  { name: 'أحمد الحربي', nameEn: 'Ahmed Al-Harbi', role: 'مؤسس، شركة تقنية ناشئة', roleEn: 'Founder, Tech Startup', text: 'فريق Code LAN حوّل فكرتي إلى منصة متكاملة بجودة تفوق توقعاتي. الاحترافية والالتزام بالمواعيد كانا استثنائيَّين.', textEn: 'The Code LAN team turned my idea into a complete platform with quality beyond my expectations. Exceptional professionalism.', color: 'from-blue-600 to-blue-400' },
-  { name: 'سارة المطيري', nameEn: 'Sara Al-Mutairi', role: 'مديرة تسويق رقمي', roleEn: 'Digital Marketing Manager', text: 'أفضل فريق تطوير تعاملت معه. يفهمون متطلبات الأعمال ويقدمون حلولاً ذكية وقابلة للتوسع.', textEn: "The best dev team I've worked with. They understand business requirements and deliver smart scalable solutions.", color: 'from-purple-600 to-purple-400' },
-  { name: 'عبدالله الشمري', nameEn: 'Abdullah Al-Shammari', role: 'CTO، شركة برمجيات', roleEn: 'CTO, Software Company', text: 'قدموا لنا استشارة تقنية وفّرت علينا أشهراً من العمل الخاطئ. خبرتهم في البنية التحتية والأمن واضحة جداً.', textEn: 'Provided us with tech consultation that saved months of wrong work. Their infra and security expertise is very clear.', color: 'from-green-600 to-green-400' },
-];
+const FALLBACK = [];
 
 const getInitials = (name = '') => name.trim().split(' ').slice(0, 2).map(w => w[0] ?? '').join('');
 
@@ -53,17 +49,25 @@ const Testimonials = () => {
 
   const lbl = LABELS[lang];
 
+  // Nothing real to show yet — keep the anchor target, show no content.
+  if (reviews.length === 0) return <section id="testimonials" />;
+
   return (
-    <section id="testimonials" className="py-24 bg-gray-100 dark:bg-[#0a0f1e]">
-      <div className="max-w-7xl mx-auto px-6">
+    <section id="testimonials" data-header="dark" className="relative z-10 py-24 overflow-hidden" style={{ backgroundColor: '#0a0f1e' }}>
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-[60%] pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 55% 100% at 50% 0%, rgba(26,127,255,0.10), transparent 70%)' }}
+      />
+      <div className="relative max-w-7xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           className="text-center flex flex-col items-center mb-16"
         >
-          <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">{lbl.title}</h2>
-          <p className="text-gray-600 dark:text-slate-300 text-lg max-w-2xl mx-auto">{lbl.sub}</p>
+          <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight text-white">{lbl.title}</h2>
+          <p className="text-slate-400 text-lg max-w-2xl mx-auto">{lbl.sub}</p>
         </motion.div>
 
         <div className="flex flex-wrap justify-center gap-8">
@@ -78,9 +82,9 @@ const Testimonials = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: idx * 0.15, ease: EASE_EXPO }}
-                className="w-full md:w-[calc(33.333%-1.334rem)] bg-white dark:bg-[#0d1428] border border-gray-200 dark:border-white/5 rounded-2xl p-8 hover:border-gray-400 dark:hover:border-brand-gray/40 transition-[transform,border-color] duration-300 hover:-translate-y-1 relative shadow-sm dark:shadow-none"
+                className="grow basis-[320px] max-w-[400px] bg-white/[0.03] border border-white/10 rounded-2xl p-8 hover:border-white/25 transition-[transform,border-color] duration-300 hover:-translate-y-1 relative shadow-sm dark:shadow-none"
               >
-                <div className="absolute top-6 left-6 text-6xl text-gray-400/20 dark:text-brand-gray/10 font-serif leading-none rotate-180">"</div>
+                <div className="absolute top-6 left-6 text-6xl text-white/10 font-serif leading-none rotate-180">"</div>
                 <div className="flex gap-1 text-yellow-400 mb-6">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <motion.span
@@ -94,7 +98,7 @@ const Testimonials = () => {
                     </motion.span>
                   ))}
                 </div>
-                <p className="text-gray-700 dark:text-slate-300 leading-relaxed mb-8 relative z-10 text-sm">
+                <p className="text-slate-300 leading-relaxed mb-8 relative z-10 text-sm">
                   "{displayText}"
                 </p>
                 <div className="flex items-center gap-4">
@@ -102,8 +106,8 @@ const Testimonials = () => {
                     {getInitials(displayName) || '؟'}
                   </div>
                   <div>
-                    <div className="font-bold text-gray-900 dark:text-white text-sm">{displayName}</div>
-                    <div className="text-xs text-gray-600 dark:text-slate-300">{displayRole}</div>
+                    <div className="font-bold text-white text-sm">{displayName}</div>
+                    <div className="text-xs text-slate-400">{displayRole}</div>
                   </div>
                 </div>
               </TiltCard>

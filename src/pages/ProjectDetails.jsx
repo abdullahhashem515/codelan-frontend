@@ -1,27 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, ExternalLink, Code2, Clock, Users, ChevronRight, Search } from 'lucide-react';
-import { useLang } from '../context/LangContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, ArrowRight, Maximize2 } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import NoIndex from '../components/NoIndex';
+import ProjectGallery from '../components/ProjectGallery';
+import VideoEmbed from '../components/VideoEmbed';
+import { useLang } from '../context/LangContext';
 import { apiGetProject } from '../services/api';
+import { fromApiProject, valueDir } from '../utils/project';
+import { WORK_KINDS, kindOf, isCreative, projectLinks } from '../utils/workKinds';
+import { EASE_EXPO } from '../utils/motion';
+
+// Lazy: keeps the footer out of this page's first load (ProjectDetails in
+// particular ships in the main bundle).
+const Footer = lazyWithRetry(() => import('../components/Footer'));
 
 const LABELS = {
-  ar: { back: 'العودة إلى المشاريع', about: 'نبذة عن المشروع', features: 'المميزات الرئيسية', visit: 'زيارة المشروع', duration: 'مدة التنفيذ', team: 'فريق العمل', stack: 'التقنيات المستخدمة', loading: 'جاري التحميل...', notFound: 'المشروع غير موجود', home: 'العودة للصفحة الرئيسية' },
-  en: { back: 'Back to Portfolio', about: 'About the Project', features: 'Key Features', visit: 'Visit Project', duration: 'Duration', team: 'Team Size', stack: 'Tech Stack', loading: 'Loading...', notFound: 'Project Not Found', home: 'Back to Home' },
+  ar: {
+    back: 'كل الأعمال', loading: 'جاري التحميل...', notFound: 'لم نعثر على هذا العمل',
+    notFoundSub: 'ربما حُذف أو تغيّر رابطه.', tech: 'التقنيات المستخدمة',
+    expand: 'عرض بملء الشاشة', tools: 'الأدوات المستخدمة', equipment: 'المعدات والتقنيات', results: 'النتائج', feed: 'من الحساب', stills: 'لقطات من العمل',
+  },
+  en: {
+    back: 'All work', loading: 'Loading...', notFound: 'We could not find this work',
+    notFoundSub: 'It may have been removed, or its link changed.', tech: 'Built with',
+    expand: 'View full screen', tools: 'Tools used', equipment: 'Equipment & technology', results: 'Results', feed: 'From the account', stills: 'Stills',
+  },
 };
 
-const parseJson = (val, fallback = []) => {
-  if (Array.isArray(val)) return val;
-  if (typeof val === 'string' && val) { try { return JSON.parse(val); } catch {} }
-  return fallback;
-};
-
-const parseStack = (stack, technologies) => {
-  if (Array.isArray(technologies) && technologies.length) return technologies;
-  if (Array.isArray(stack) && stack.length) return stack;
-  if (typeof stack === 'string' && stack) return stack.split(',').map(s => s.trim()).filter(Boolean);
-  return [];
+const setMeta = (selector, attr, value, create) => {
+  if (!value) return;
+  let el = document.querySelector(selector);
+  if (!el) { el = create(); document.head.appendChild(el); }
+  el.setAttribute('content', value);
 };
 
 const ProjectDetails = () => {
@@ -33,198 +46,295 @@ const ProjectDetails = () => {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [slide, setSlide] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
 
-  useEffect(() => {
+  // Reset while rendering the new id rather than from inside the effect, so the
+  // page never shows the previous project under a "loaded" state for a frame.
+  const [renderedId, setRenderedId] = useState(id);
+  if (renderedId !== id) {
+    setRenderedId(id);
+    setProject(null);
     setLoading(true);
     setNotFound(false);
+    setSlide(0);
+  }
+
+  useEffect(() => {
+    // Moving between projects quickly leaves more than one request in flight;
+    // without this guard a slower earlier response could land last.
+    let active = true;
+
     apiGetProject(id)
       .then(res => {
-        const p = res.data ?? res;
-        if (!p || !p.id) { setNotFound(true); return; }
-        setProject(p);
-        const name = ar ? (p.title ?? '') : (p.title_en ?? p.title ?? '');
-        if (name) document.title = name;
+        if (!active) return;
+        const raw = res.data ?? res;
+        if (!raw || !raw.id) { setNotFound(true); return; }
+        setProject(fromApiProject(raw));
       })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
-  }, [id, lang]);
+      .catch(() => { if (active) setNotFound(true); })
+      .finally(() => { if (active) setLoading(false); });
 
-  // ── Loading ──────────────────────────────────────────────────────────────
+    return () => { active = false; };
+  }, [id]);
+
+  // The whole point of a dedicated page is that search engines and link
+  // previews can see it, so publish the project's own title/description/image.
+  useEffect(() => {
+    if (!project) return;
+    const title = ar ? project.title : (project.titleEn || project.title);
+    const desc = ar ? project.desc : (project.descEn || project.desc);
+
+    document.title = title;
+    setMeta('meta[name="description"]', 'content', desc,
+      () => Object.assign(document.createElement('meta'), { name: 'description' }));
+    setMeta('meta[property="og:title"]', 'content', title,
+      () => { const m = document.createElement('meta'); m.setAttribute('property', 'og:title'); return m; });
+    setMeta('meta[property="og:description"]', 'content', desc,
+      () => { const m = document.createElement('meta'); m.setAttribute('property', 'og:description'); return m; });
+    setMeta('meta[property="og:image"]', 'content', project.images[0] || project.image,
+      () => { const m = document.createElement('meta'); m.setAttribute('property', 'og:image'); return m; });
+  }, [project, ar]);
+
   if (loading) return (
     <>
       <Navbar />
-      <main className="pt-28 pb-20 min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4 text-gray-400 dark:text-slate-500">
-          <svg className="animate-spin w-10 h-10" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-          </svg>
-          <span>{lbl.loading}</span>
-        </div>
-      </main>
+      <div className="min-h-screen flex items-center justify-center text-gray-500 dark:text-slate-400">
+        <span className="text-sm">{lbl.loading}</span>
+      </div>
     </>
   );
 
-  // ── Not found ────────────────────────────────────────────────────────────
   if (notFound || !project) return (
     <>
+      <NoIndex />
       <Navbar />
-      <main className="pt-28 pb-20 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Search className="mx-auto mb-4 text-gray-400" size={56} />
-          <h1 className="text-2xl font-bold mb-4">{lbl.notFound}</h1>
-          <Link to="/" className="text-blue-500 hover:underline font-medium">{lbl.home}</Link>
-        </div>
-      </main>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{lbl.notFound}</h1>
+        <p className="text-gray-600 dark:text-slate-400 mb-8">{lbl.notFoundSub}</p>
+        <Link to="/#portfolio" className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold no-underline transition-colors">
+          {ar ? <ArrowRight size={18} aria-hidden="true" /> : <ArrowLeft size={18} aria-hidden="true" />}
+          {lbl.back}
+        </Link>
+      </div>
+      <Suspense fallback={null}><Footer /></Suspense>
     </>
   );
 
-  // ── Map project fields ───────────────────────────────────────────────────
-  const title        = ar ? project.title         : (project.title_en         ?? project.title);
-  const category     = ar ? project.category      : (project.category_en      ?? project.category);
-  const description  = ar ? (project.full_description  || project.description)
-                           : (project.full_description_en || project.description_en || project.full_description || project.description);
-  const features     = ar ? parseJson(project.features)    : parseJson(project.features_en, parseJson(project.features));
-  const metrics      = parseJson(project.metrics);
-  const stack        = parseStack(project.stack, parseJson(project.technologies));
-  const thumbGradient = project.thumb_gradient ?? 'from-[#0a1628] to-[#1a2a4a]';
-  const strokeColor   = project.stroke_color  ?? '#3b82f6';
-  const liveUrl       = project.project_url   ?? '#';
+  const kind = kindOf(project.type);
+  const isMobileApp = kind === 'mobile';
+  const { Icon: KindIcon } = WORK_KINDS[kind];
+  const title = ar ? project.title : (project.titleEn || project.title);
+  const desc = ar ? project.desc : (project.descEn || project.desc);
+  const body = ar ? project.body : (project.bodyEn || project.body);
+  const category = ar ? project.category : (project.categoryEn || project.category);
+  const images = project.images;
+  const links = projectLinks(project, lang);
+  const openAt = (i) => { setSlide(i); setFullscreen(true); };
+
+  // Creative work is shown as itself rather than in the software slider:
+  //  • design — every piece at its own proportions (a masonry of posters);
+  //  • motion — the video first, then stills if any were added;
+  //  • social — the results, then the posts as the account's grid.
+  const masonry = (list) => (
+    <div className="columns-1 sm:columns-2 lg:columns-3 gap-4">
+      {list.map((src, i) => (
+        <button key={src} type="button" onClick={() => openAt(images.indexOf(src))} aria-label={lbl.expand}
+          className="group relative block w-full mb-4 break-inside-avoid rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 cursor-zoom-in bg-gray-100 dark:bg-[#0a0f1e]">
+          <img src={src} alt="" loading={i < 3 ? 'eager' : 'lazy'} decoding="async" className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.02]" />
+        </button>
+      ))}
+    </div>
+  );
+
+  const creativeMedia = (() => {
+    if (kind === 'motion') {
+      const stills = images.length > 1 ? images : [];
+      return (
+        <>
+          <VideoEmbed video={project.video} poster={project.image} title={title} className="mb-10" />
+          {stills.length > 0 && (
+            <section className="mb-4">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase ltr:tracking-wider mb-4">{lbl.stills}</h2>
+              {masonry(stills)}
+            </section>
+          )}
+        </>
+      );
+    }
+    if (kind === 'social') {
+      return (
+        <>
+          {project.results.length > 0 && (
+            <section className="mb-10">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase ltr:tracking-wider mb-4">{lbl.results}</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {project.results.map(r => (
+                  <div key={r.label} className="rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.03] p-5">
+                    <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white font-english" dir={valueDir(r.value)}>{r.value}</div>
+                    <div className="text-sm text-gray-500 dark:text-slate-400 mt-2">{ar ? r.label : (r.labelEn || r.label)}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          {images.length > 0 && (
+            <section>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase ltr:tracking-wider mb-4">{lbl.feed}</h2>
+              <div className="grid grid-cols-3 gap-1 sm:gap-2 max-w-3xl">
+                {images.map((src, i) => (
+                  <button key={src} type="button" onClick={() => openAt(i)} aria-label={lbl.expand}
+                    className="group relative aspect-square overflow-hidden rounded-md sm:rounded-lg cursor-zoom-in bg-gray-100 dark:bg-[#0a0f1e]">
+                    <img src={src} alt="" loading={i < 6 ? 'eager' : 'lazy'} decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      );
+    }
+    return images.length > 0 ? masonry(images) : null;
+  })();
 
   return (
     <>
       <Navbar />
-      <main className="pt-28 pb-20 min-h-screen">
-        <div className="max-w-6xl mx-auto px-6">
+      <main className="min-h-screen pt-28 pb-24 px-6">
+        <div className="max-w-5xl mx-auto">
+          <Link to="/#portfolio" className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white no-underline mb-8 transition-colors">
+            {ar ? <ArrowRight size={16} aria-hidden="true" /> : <ArrowLeft size={16} aria-hidden="true" />}
+            {lbl.back}
+          </Link>
 
-          {/* زر الرجوع */}
-          <motion.div initial={{ opacity: 0, x: ar ? 16 : -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }} className="mb-8">
-            <Link to="/" className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium">
-              {ar ? <ArrowRight size={16} /> : <ArrowLeft size={16} />}
-              {lbl.back}
-            </Link>
-          </motion.div>
-
-          {/* غلاف المشروع */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
+          <motion.header
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className={`w-full h-64 md:h-96 rounded-3xl bg-gradient-to-br ${thumbGradient} relative overflow-hidden mb-12 flex items-center justify-center`}
+            transition={{ duration: 0.5, ease: EASE_EXPO }}
+            className="mb-10"
           >
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/50"></div>
-            <svg width="220" height="150" viewBox="0 0 220 150" className="opacity-25 relative z-0">
-              <rect x="15" y="15" width="190" height="120" rx="14" fill="none" stroke={strokeColor} strokeWidth="2" opacity="0.9"/>
-              <circle cx="110" cy="75" r="32" fill="none" stroke={strokeColor} strokeWidth="2" opacity="0.9"/>
-              <line x1="15" y1="75" x2="78" y2="75" stroke={strokeColor} strokeWidth="1.5" opacity="0.7"/>
-              <line x1="142" y1="75" x2="205" y2="75" stroke={strokeColor} strokeWidth="1.5" opacity="0.7"/>
-              <circle cx="110" cy="75" r="8" fill={strokeColor} opacity="0.6"/>
-            </svg>
-            {category && (
-              <div className="absolute bottom-6 start-6 z-10">
-                <span className="font-mono text-xs bg-black/50 text-white backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/20">
-                  {category}
+            <span className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-600 dark:text-brand-gray bg-gray-100 dark:bg-brand-gray/10 px-2.5 py-1 rounded mb-4">
+              <KindIcon size={12} aria-hidden="true" />
+              {category || (ar ? WORK_KINDS[kind].ar : WORK_KINDS[kind].en)}
+            </span>
+            <h1 className="text-3xl md:text-5xl font-bold tracking-tight ltr:leading-tight rtl:leading-[1.45] text-gray-900 dark:text-white mb-4">{title}</h1>
+            {desc && <p className="text-lg text-gray-600 dark:text-slate-300 leading-relaxed max-w-3xl">{desc}</p>}
+          </motion.header>
+
+          {isCreative(kind) && creativeMedia && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1, ease: EASE_EXPO }}
+              className="mb-12"
+            >
+              {creativeMedia}
+            </motion.div>
+          )}
+
+          {/* اللقطات — أفقية للويب، وداخل إطار هاتف للتطبيقات */}
+          {!isCreative(kind) && images.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1, ease: EASE_EXPO }}
+              className="mb-12"
+            >
+              <button
+                type="button"
+                onClick={() => setFullscreen(true)}
+                aria-label={lbl.expand}
+                className={`group relative w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 cursor-zoom-in ${isMobileApp ? 'bg-gradient-to-br from-gray-900 to-gray-800 py-8 flex justify-center' : 'bg-gray-100 dark:bg-[#0a0f1e]'}`}
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.img
+                    key={images[slide]}
+                    src={images[slide]}
+                    alt=""
+                    fetchPriority="high"
+                    decoding="async"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className={isMobileApp ? 'max-h-[70vh] w-auto rounded-2xl shadow-2xl' : 'w-full max-h-[70vh] object-contain'}
+                  />
+                </AnimatePresence>
+                <span className="absolute top-3 end-3 w-9 h-9 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Maximize2 size={16} aria-hidden="true" />
                 </span>
-              </div>
-            )}
-          </motion.div>
+              </button>
 
-          {/* المحتوى الرئيسي */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-
-            {/* العمود الرئيسي */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="lg:col-span-2 space-y-10">
-              <h1 className="text-3xl md:text-4xl font-bold leading-tight">{title}</h1>
-
-              {description && (
-                <div>
-                  <h2 className="text-base font-bold text-gray-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                    <span className="w-1 h-5 bg-blue-500 rounded-full block flex-shrink-0"></span>
-                    {lbl.about}
-                  </h2>
-                  <p className="text-gray-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">{description}</p>
-                </div>
-              )}
-
-              {features.length > 0 && (
-                <div>
-                  <h2 className="text-base font-bold text-gray-700 dark:text-slate-300 mb-4 flex items-center gap-2">
-                    <span className="w-1 h-5 bg-red-500 rounded-full block flex-shrink-0"></span>
-                    {lbl.features}
-                  </h2>
-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {features.map((feat, i) => (
-                      <li key={i} className="flex items-start gap-3 bg-gray-50 dark:bg-[#0d1428] border border-gray-200 dark:border-white/5 rounded-xl px-4 py-3">
-                        <ChevronRight size={15} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-gray-700 dark:text-slate-300">{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {metrics.length > 0 && (
-                <div className="grid grid-cols-3 gap-4">
-                  {metrics.slice(0, 3).map((m, i) => (
-                    <div key={i} className="bg-gray-50 dark:bg-[#0d1428] border border-gray-200 dark:border-white/5 rounded-2xl p-5 text-center">
-                      <div className="font-mono text-2xl font-bold text-blue-500 dark:text-blue-400 mb-1">{m.val}</div>
-                      <div className="text-xs text-gray-500 dark:text-slate-500 uppercase tracking-wider">
-                        {typeof m.lbl === 'object' ? (ar ? m.lbl.ar : m.lbl.en) : m.lbl}
-                      </div>
-                    </div>
+              {images.length > 1 && (
+                <div className="flex flex-wrap gap-3 mt-4">
+                  {images.map((src, i) => (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => setSlide(i)}
+                      aria-current={i === slide}
+                      className={`w-20 h-16 rounded-lg overflow-hidden border-2 transition-colors ${i === slide ? 'border-blue-500' : 'border-transparent hover:border-gray-300 dark:hover:border-white/20'}`}
+                    >
+                      <img src={src} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                    </button>
                   ))}
                 </div>
               )}
             </motion.div>
+          )}
 
-            {/* الشريط الجانبي */}
-            <motion.div initial={{ opacity: 0, x: ar ? -20 : 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="space-y-5">
-              {liveUrl !== '#' && (
-                <a href={liveUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-semibold transition-colors shadow-lg shadow-blue-600/20">
-                  <ExternalLink size={17} />
-                  {lbl.visit}
-                </a>
-              )}
+          {body && (
+            <div className="prose-none max-w-3xl mb-12">
+              {body.split('\n').filter(Boolean).map((para, i) => (
+                <p key={i} className="text-gray-600 dark:text-slate-300 leading-relaxed mb-4">{para}</p>
+              ))}
+            </div>
+          )}
 
-              <div className="bg-gray-50 dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/5 rounded-2xl p-5 space-y-4">
-                {project.duration && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center flex-shrink-0"><Clock size={15} /></div>
-                    <div>
-                      <div className="text-xs text-gray-500 dark:text-slate-500 uppercase tracking-wider mb-0.5">{lbl.duration}</div>
-                      <div className="text-sm font-bold text-gray-900 dark:text-white">{project.duration}</div>
-                    </div>
-                  </div>
-                )}
-                {project.team_size && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-red-500/10 text-red-500 rounded-lg flex items-center justify-center flex-shrink-0"><Users size={15} /></div>
-                    <div>
-                      <div className="text-xs text-gray-500 dark:text-slate-500 uppercase tracking-wider mb-0.5">{lbl.team}</div>
-                      <div className="text-sm font-bold text-gray-900 dark:text-white">{project.team_size}</div>
-                    </div>
-                  </div>
-                )}
+          {project.stack.length > 0 && (
+            <section className="mb-12">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white uppercase ltr:tracking-wider mb-4">{kind === 'infra' ? lbl.equipment : isCreative(kind) ? lbl.tools : lbl.tech}</h2>
+              <div className="flex flex-wrap gap-2">
+                {project.stack.map((tech) => (
+                  <span key={tech} dir="auto" className="text-sm text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-white/5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-brand-gray/15">
+                    {tech}
+                  </span>
+                ))}
               </div>
+            </section>
+          )}
 
-              {stack.length > 0 && (
-                <div className="bg-gray-50 dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/5 rounded-2xl p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Code2 size={15} className="text-blue-500" />
-                    <span className="text-sm font-bold text-gray-700 dark:text-slate-300">{lbl.stack}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {stack.map((tech, i) => (
-                      <span key={i} className="font-mono text-xs bg-white dark:bg-[#111827] text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-white/10 px-3 py-1.5 rounded-lg">{tech}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-
-          </div>
+          {links.length > 0 && (
+            <div className="flex flex-wrap gap-3">
+              {links.map(({ href, label, Icon }) => (
+                <a
+                  key={href}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold no-underline transition-colors"
+                >
+                  <Icon size={18} aria-hidden="true" />
+                  {label}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
       </main>
+      <Suspense fallback={null}><Footer /></Suspense>
+
+      {/* الصور بملء الشاشة — نفس مكوّن المعرض المستخدم سابقاً */}
+      <AnimatePresence>
+        {fullscreen && (
+          <ProjectGallery
+            project={project}
+            index={slide}
+            onIndex={setSlide}
+            onClose={() => setFullscreen(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 };

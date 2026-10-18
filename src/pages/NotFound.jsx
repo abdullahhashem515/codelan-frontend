@@ -1,12 +1,23 @@
-import React from 'react';
+import { Suspense } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useLang } from '../context/LangContext';
+import NoIndex from '../components/NoIndex';
+
+// Lazy: keeps the footer out of this page's first load (ProjectDetails in
+// particular ships in the main bundle).
+const Footer = lazyWithRetry(() => import('../components/Footer'));
 
 const NotFound = () => {
   const { lang } = useLang();
+  // "Back" points toward where reading started: right in Arabic, left in English.
+  const Back = lang === 'ar' ? ArrowRight : ArrowLeft;
 
   return (
-    <div className="min-h-screen bg-[#050810] flex items-center justify-center p-6 relative overflow-hidden">
+    <>
+    <NoIndex />
+    <div className="min-h-[85svh] bg-[#050810] flex items-center justify-center p-6 relative overflow-hidden">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-600/5 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="text-center relative z-10">
@@ -25,10 +36,13 @@ const NotFound = () => {
           to="/"
           className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(59,130,246,0.35)]"
         >
-          {lang === 'ar' ? '← العودة للرئيسية' : '← Back to Home'}
+          <Back size={18} aria-hidden="true" />
+          {lang === 'ar' ? 'العودة للرئيسية' : 'Back to Home'}
         </Link>
       </div>
     </div>
+    <Suspense fallback={null}><Footer /></Suspense>
+    </>
   );
 };
 

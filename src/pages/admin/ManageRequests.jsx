@@ -1,5 +1,5 @@
 // src/pages/admin/ManageRequests.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, Trash2, X, AlertTriangle } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
@@ -28,7 +28,7 @@ const ManageRequests = () => {
       try {
         await apiUpdateRequestStatus(req.id, 'read');
         setRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'read' } : r));
-      } catch {}
+      } catch { /* marking as read is best-effort — never block opening the request */ }
     }
   };
 
@@ -129,7 +129,7 @@ const ManageRequests = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsViewModalOpen(false)} className="absolute inset-0 bg-[#050810]/90 backdrop-blur-md" />
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-lg bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-3xl shadow-2xl max-h-full overflow-y-auto"
             >
               <div className="p-6 border-b border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-[#111827] flex justify-between items-center">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">{lang === 'ar' ? 'تفاصيل الطلب' : 'Request Details'}</h2>
@@ -172,7 +172,7 @@ const ManageRequests = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsDeleteModalOpen(false)} className="absolute inset-0 bg-[#050810]/80 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-              className="relative w-full max-w-sm bg-white dark:bg-[#111827] border border-red-500/20 rounded-2xl p-6 text-center shadow-2xl"
+              className="relative w-full max-w-sm bg-white dark:bg-[#111827] border border-red-500/20 rounded-2xl p-6 text-center shadow-2xl max-h-full overflow-y-auto"
             >
               <AlertTriangle className="mx-auto mb-4 text-red-500" size={28} />
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{lang === 'ar' ? 'حذف الطلب' : 'Delete Request'}</h3>

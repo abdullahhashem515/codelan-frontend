@@ -1,9 +1,9 @@
 // src/pages/admin/ManageServices.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Pencil, Trash2, X, AlertTriangle } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
-import { apiGetServices, apiCreateService, apiUpdateService, apiDeleteService } from '../../services/api';
+import { apiGetAllServices, apiCreateService, apiUpdateService, apiDeleteService } from '../../services/api';
 import DynamicIcon from '../../components/DynamicIcon';
 import IconPicker from '../../components/IconPicker';
 
@@ -31,18 +31,19 @@ const toApi = (f) => ({
   description:     f.descAr,
   description_en:  f.descEn,
   icon:            f.icon,
+  category:        f.category,
   tags:            f.tags || null,
   is_active:       f.status === 'active',
 });
 
-const EMPTY_FORM = { id: null, icon: '⚡', titleAr: '', titleEn: '', descAr: '', descEn: '', tags: '', status: 'active' };
+const EMPTY_FORM = { id: null, icon: 'code', category: 'software', titleAr: '', titleEn: '', descAr: '', descEn: '', tags: '', status: 'active' };
 
 const ManageServices = () => {
   const { lang } = useLang();
 
   const [services, setServices]               = useState([]);
   const [loading, setLoading]                 = useState(true);
-  const [fetchError, setFetchError]           = useState('');
+  const [fetchFailed, setFetchFailed]         = useState(false);
   const [saving, setSaving]                   = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [modalMode, setModalMode]             = useState('add');
@@ -51,9 +52,9 @@ const ManageServices = () => {
   const [formData, setFormData]               = useState(EMPTY_FORM);
 
   useEffect(() => {
-    apiGetServices()
+    apiGetAllServices()
       .then(res => setServices(res.data.map(toForm)))
-      .catch(() => setFetchError(lang === 'ar' ? 'فشل تحميل الخدمات' : 'Failed to load services'))
+      .catch(() => setFetchFailed(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -104,11 +105,11 @@ const ManageServices = () => {
     </div>
   );
 
-  if (fetchError) return (
+  if (fetchFailed) return (
     <div className="flex items-center justify-center h-64">
       <div className="text-center text-red-500 dark:text-red-400">
         <AlertTriangle className="mx-auto mb-2" size={28} />
-        <p>{fetchError}</p>
+        <p>{lang === 'ar' ? 'فشل تحميل الخدمات' : 'Failed to load services'}</p>
       </div>
     </div>
   );
@@ -189,7 +190,7 @@ const ManageServices = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }} transition={{ duration: 0.2 }}
-              className="relative w-full max-w-4xl bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-4xl bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-full"
             >
               <div className="p-6 border-b border-gray-200 dark:border-white/5 flex items-center justify-between bg-gray-50 dark:bg-[#111827]">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -232,6 +233,15 @@ const ManageServices = () => {
                       <textarea name="descEn" value={formData.descEn} onChange={handleFormChange} required rows="3" dir="ltr" className={`${inputCls} font-english resize-none`} />
                     </div>
                   </div>
+                  {/* تصنيف الخدمة — يجمّع الخدمات في الموقع تحت عائلتين بدل
+                      قائمة واحدة مختلطة. */}
+                  <div>
+                    <label className="block text-gray-500 dark:text-slate-400 text-sm mb-2">{lang === 'ar' ? 'التصنيف' : 'Category'}</label>
+                    <select name="category" value={formData.category} onChange={handleFormChange} className={inputCls}>
+                      <option value="software">{lang === 'ar' ? 'برمجة وتطوير' : 'Software'}</option>
+                      <option value="infrastructure">{lang === 'ar' ? 'شبكات وبنية تحتية' : 'Networks & Infrastructure'}</option>
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-gray-500 dark:text-slate-400 text-sm mb-2">{lang === 'ar' ? 'التقنيات (مفصولة بفاصلة)' : 'Tech Stack (comma separated)'}</label>
                     <input type="text" name="tags" value={formData.tags} onChange={handleFormChange} dir="ltr" className={`${inputCls} font-english`} />
@@ -259,7 +269,7 @@ const ManageServices = () => {
         {isDeleteModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsDeleteModalOpen(false)} className="absolute inset-0 bg-[#050810]/80 backdrop-blur-sm" />
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="relative w-full max-w-sm bg-white dark:bg-[#111827] border border-red-500/20 rounded-2xl p-6 shadow-2xl text-center">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="relative w-full max-w-sm max-h-full overflow-y-auto bg-white dark:bg-[#111827] border border-red-500/20 rounded-2xl p-6 shadow-2xl text-center">
               <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20"><AlertTriangle size={28} /></div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{lang === 'ar' ? 'تأكيد الحذف' : 'Confirm Delete'}</h3>
               <p className="text-gray-500 dark:text-slate-400 text-sm mb-6">{lang === 'ar' ? 'هل أنت متأكد من حذف هذه الخدمة؟' : 'Are you sure you want to delete this service?'}</p>

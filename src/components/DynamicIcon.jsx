@@ -6,6 +6,9 @@ import { getIconForEmoji } from '../utils/iconMap';
 // glyph. Purely a display-layer swap — the underlying value is still the
 // same emoji string sent to/from the API.
 const DynamicIcon = ({ emoji, size = 22, className = '' }) => {
+  // getIconForEmoji is a lookup in a module-level map, so the same emoji
+  // always yields the same component reference — nothing is constructed
+  // during render and React never remounts the icon.
   const Icon = getIconForEmoji(emoji);
   return (
     <motion.span
@@ -13,6 +16,7 @@ const DynamicIcon = ({ emoji, size = 22, className = '' }) => {
       transition={{ type: 'spring', stiffness: 400, damping: 15 }}
       className={`inline-flex items-center justify-center ${className}`}
     >
+      {/* eslint-disable-next-line react-hooks/static-components -- stable map lookup, see above */}
       <Icon size={size} strokeWidth={1.8} />
     </motion.span>
   );

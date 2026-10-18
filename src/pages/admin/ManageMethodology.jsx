@@ -1,12 +1,10 @@
 // src/pages/admin/ManageMethodology.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import { Plus, Pencil, Trash2, GripVertical, X } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
 import { apiGetMethodology, apiCreateStep, apiUpdateStep, apiDeleteStep } from '../../services/api';
-import DynamicIcon from '../../components/DynamicIcon';
-import IconPicker from '../../components/IconPicker';
 import {
   DndContext,
   closestCenter,
@@ -82,10 +80,6 @@ const SortableStep = ({ step, index, onEdit, onDelete, ar }) => {
         title={ar ? 'اسحب للترتيب' : 'Drag to reorder'}
       >
         <GripVertical size={20} />
-      </div>
-
-      <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-[#111827] border border-gray-200 dark:border-white/5 flex items-center justify-center text-blue-500 dark:text-blue-400 flex-shrink-0">
-        <DynamicIcon emoji={step.icon} size={22} />
       </div>
 
       <div className="flex-1">
@@ -249,7 +243,7 @@ const ManageMethodology = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-lg bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-lg bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl max-h-full overflow-y-auto"
             >
               <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-white/5">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -260,12 +254,6 @@ const ManageMethodology = () => {
                 </button>
               </div>
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">
-                    {ar ? 'الأيقونة' : 'Icon'}
-                  </label>
-                  <IconPicker lang={lang} value={formData.icon} onChange={(emoji) => setFormData({ ...formData, icon: emoji })} />
-                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">{ar ? 'العنوان (عربي)' : 'Title (AR)'}</label>
@@ -306,7 +294,7 @@ const ManageMethodology = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-[#0a0f1e] border border-red-500/20 rounded-2xl shadow-2xl p-6 text-center"
+              className="w-full max-w-sm bg-white dark:bg-[#0a0f1e] border border-red-500/20 rounded-2xl shadow-2xl p-6 text-center max-h-full overflow-y-auto"
             >
               <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4">
                 <Trash2 size={32} />

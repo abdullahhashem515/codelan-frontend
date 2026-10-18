@@ -1,5 +1,5 @@
 // src/pages/admin/ManageArticles.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import {
@@ -7,7 +7,7 @@ import {
   CheckCircle, Clock, ExternalLink
 } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
-import { apiGetPosts, apiCreatePost, apiUpdatePost, apiDeletePost } from '../../services/api';
+import { apiGetAllPosts, apiCreatePost, apiUpdatePost, apiDeletePost } from '../../services/api';
 
 // ─── Shared Style ─────────────────────────────────────────────────────────
 const inputCls =
@@ -29,6 +29,7 @@ const toForm = (p) => ({
   contentAr: p.content    ?? '',
   contentEn: p.content_en ?? '',
   imageUrl:  p.image_url  ?? '',
+  slug:      p.slug       ?? '',
   date:      p.published_at ? p.published_at.split('T')[0] : (p.date ?? ''),
   status:    p.status     ?? 'draft',
 });
@@ -42,6 +43,9 @@ const toApi = (f) => ({
   content_en: f.contentEn,
   image_url:  f.imageUrl,
   date:       f.date,
+  published_at: f.date || null,
+  // Empty → the backend generates it.
+  ...(f.slug.trim() ? { slug: f.slug.trim().toLowerCase() } : {}),
   status:     f.status,
 });
 
@@ -57,11 +61,11 @@ const ManageArticles = () => {
   const [saving, setSaving]           = useState(false);
 
   const [formData, setFormData] = useState({
-    id: '', titleAr: '', titleEn: '', excerptAr: '', excerptEn: '', contentAr: '', contentEn: '', imageUrl: '', date: '', status: 'draft'
+    id: '', titleAr: '', titleEn: '', excerptAr: '', excerptEn: '', contentAr: '', contentEn: '', imageUrl: '', slug: '', date: '', status: 'draft'
   });
 
   useEffect(() => {
-    apiGetPosts()
+    apiGetAllPosts()
       .then(res => setArticles((res.data ?? []).map(toForm)))
       .catch(() => setArticles([]))
       .finally(() => setLoading(false));
@@ -69,7 +73,7 @@ const ManageArticles = () => {
 
   const openAdd = () => {
     const today = new Date().toISOString().split('T')[0];
-    setFormData({ id: '', titleAr: '', titleEn: '', excerptAr: '', excerptEn: '', contentAr: '', contentEn: '', imageUrl: '', date: today, status: 'draft' });
+    setFormData({ id: '', titleAr: '', titleEn: '', excerptAr: '', excerptEn: '', contentAr: '', contentEn: '', imageUrl: '', slug: '', date: today, status: 'draft' });
     setModalMode('add');
     setIsModalOpen(true);
   };
@@ -227,7 +231,7 @@ const ManageArticles = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-4xl bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[95vh]"
+              className="w-full max-w-4xl bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-full"
             >
 
               {/* الهيدر (ثابت) */}
@@ -251,7 +255,7 @@ const ManageArticles = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 dark:bg-white/5 p-5 rounded-xl border border-gray-200 dark:border-white/5">
                     <div className="md:col-span-1">
                       <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">{ar ? 'رابط صورة الغلاف (URL)' : 'Cover Image URL'}</label>
-                      <input type="text" value={formData.imageUrl} onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} className={inputCls} placeholder="https://..." dir="ltr" />
+                      <input type="url" pattern="https://.+" title={ar ? 'يجب أن يبدأ الرابط بـ https://' : 'Must start with https://'} value={formData.imageUrl} onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} className={inputCls} placeholder="https://..." dir="ltr" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">{ar ? 'تاريخ النشر' : 'Publish Date'}</label>
@@ -263,6 +267,21 @@ const ManageArticles = () => {
                         <option value="published">{ar ? 'منشور (عام)' : 'Published (Public)'}</option>
                         <option value="draft">{ar ? 'مسودة (مخفي)' : 'Draft (Hidden)'}</option>
                       </select>
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">{ar ? 'رابط المقال (اختياري)' : 'Article link (optional)'}</label>
+                      <div dir="ltr" className="flex items-center gap-2">
+                        <span className="text-sm text-gray-400 dark:text-slate-500 font-english shrink-0">codelanco.com/blog/</span>
+                        <input type="text" pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={120}
+                          title={ar ? 'حروف إنجليزية صغيرة وأرقام وشرطات فقط' : 'Lowercase letters, numbers and hyphens only'}
+                          value={formData.slug} onChange={(e) => setFormData({...formData, slug: e.target.value.toLowerCase()})}
+                          className={`${inputCls} font-english`} placeholder="vlans-on-mikrotik" />
+                      </div>
+                      <p className="mt-1.5 text-xs text-gray-400 dark:text-slate-500">
+                        {modalMode === 'edit' && formData.status === 'published'
+                          ? (ar ? 'تنبيه: تغيير رابط مقال منشور يكسر كل رابط سبق مشاركته.' : 'Changing the link of a published article breaks every link already shared.')
+                          : (ar ? 'اتركه فارغاً ليُولَّد تلقائياً. الأفضل كلمات إنجليزية قصيرة مفصولة بشرطات.' : 'Leave empty to generate it automatically. Short English words joined by hyphens work best.')}
+                      </p>
                     </div>
                   </div>
 
@@ -332,7 +351,7 @@ const ManageArticles = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-[#0a0f1e] border border-red-500/20 rounded-2xl shadow-2xl p-6 text-center"
+              className="w-full max-w-sm bg-white dark:bg-[#0a0f1e] border border-red-500/20 rounded-2xl shadow-2xl p-6 text-center max-h-full overflow-y-auto"
             >
               <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4">
                 <Trash2 size={32} />

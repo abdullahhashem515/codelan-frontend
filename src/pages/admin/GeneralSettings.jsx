@@ -1,14 +1,13 @@
 // src/pages/admin/GeneralSettings.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import {
-  Globe, Phone, Mail, MapPin, Share2, Search, Palette,
-  Plus, Trash2, GripVertical, Eye, EyeOff, Upload, X, Tag, Save, RotateCcw,
-  Sun, Moon, Link2,
+  Globe, Phone, Mail, MapPin, Share2, Search,
+  Plus, Trash2, GripVertical, Eye, EyeOff, Upload, X, Tag, Save,
+  Link2,
 } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
-import { useTheme, DEFAULT_LIGHT, DEFAULT_DARK } from '../../context/ThemeContext';
 import { SOCIAL_ICONS } from '../../utils/socialIcons';
 import { apiGetSettings, apiUpdateSettings, apiUploadFile } from '../../services/api';
 import { getDiff } from '../../utils/diff';
@@ -27,7 +26,6 @@ const TABS = [
   { id: 'contact',  labelAr: 'معلومات التواصل',    labelEn: 'Contact Info',  Icon: Phone   },
   { id: 'social',   labelAr: 'التواصل الاجتماعي', labelEn: 'Social Links',  Icon: Share2  },
   { id: 'seo',      labelAr: 'إعدادات SEO',        labelEn: 'SEO Settings',  Icon: Search  },
-  { id: 'theme',    labelAr: 'الألوان والمظهر',    labelEn: 'Theme',         Icon: Palette },
 ];
 
 // ─── Social platforms ─────────────────────────────────────────────────────────
@@ -163,36 +161,6 @@ const SiteIdentityTab = ({ lang, data, onChange }) => {
         </div>
       </div>
 
-      {/* Site names — required */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label className="flex items-center gap-1 text-gray-500 dark:text-slate-400 text-sm mb-2">
-            {ar ? 'اسم الموقع (عربي)' : 'Site Name (Arabic)'}
-            <span className="text-red-400">*</span>
-          </label>
-          <input
-            className={inputCls}
-            value={data.siteNameAr}
-            onChange={e => onChange('siteNameAr', e.target.value)}
-            placeholder="كود لان"
-            dir="rtl"
-          />
-        </div>
-        <div>
-          <label className="flex items-center gap-1 text-gray-500 dark:text-slate-400 text-sm mb-2">
-            {ar ? 'اسم الموقع (إنجليزي)' : 'Site Name (English)'}
-            <span className="text-red-400">*</span>
-          </label>
-          <input
-            className={inputCls}
-            value={data.siteNameEn}
-            onChange={e => onChange('siteNameEn', e.target.value)}
-            placeholder="CodeLAN"
-            dir="ltr"
-          />
-        </div>
-      </div>
-
       {/* Taglines */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
@@ -245,7 +213,7 @@ const ContactInfoTab = ({ lang, data, onChange }) => {
             type="email"
             value={data.email}
             onChange={e => onChange('email', e.target.value)}
-            placeholder="info@codelan.com"
+            placeholder="info@codelanco.com"
             dir="ltr"
           />
         </div>
@@ -512,7 +480,7 @@ const SEOTab = ({ lang, data, onChange }) => {
             className={inputCls}
             value={data.metaTitleAr}
             onChange={e => onChange('metaTitleAr', e.target.value.slice(0, 60))}
-            placeholder="كود لان | فريق التطوير البرمجي"
+            placeholder="كودلانكو | فريق التطوير البرمجي"
             dir="rtl"
           />
         </div>
@@ -528,7 +496,7 @@ const SEOTab = ({ lang, data, onChange }) => {
             className={inputCls}
             value={data.metaTitleEn}
             onChange={e => onChange('metaTitleEn', e.target.value.slice(0, 60))}
-            placeholder="CodeLAN | Software Dev Team"
+            placeholder="Codelanco | Software Dev Team"
             dir="ltr"
           />
         </div>
@@ -620,264 +588,46 @@ const SEOTab = ({ lang, data, onChange }) => {
   );
 };
 
-// ─── Tab 5 — Theme (Dynamic Color System) ────────────────────────────────────
-
-const COLOR_ROWS = [
-  {
-    group: 'brand',
-    groupLabelAr: 'ألوان العلامة التجارية',
-    groupLabelEn: 'Brand Colors',
-    items: [
-      { key: 'accent',  labelAr: 'اللون الأساسي',  labelEn: 'Primary Color',   hintAr: 'الأزرار، الروابط، شريط التقدم',   hintEn: 'Buttons, links, progress bar'   },
-      { key: 'accent2', labelAr: 'اللون الثانوي',  labelEn: 'Secondary Color', hintAr: 'الحدود والأطر الثانوية',           hintEn: 'Secondary borders & outlines'   },
-      { key: 'accent3', labelAr: 'لون التمييز',    labelEn: 'Accent Color',    hintAr: 'الشارات والتوهجات',                hintEn: 'Badges & glows'                 },
-    ],
-  },
-  {
-    group: 'bg',
-    groupLabelAr: 'ألوان الخلفيات',
-    groupLabelEn: 'Backgrounds',
-    items: [
-      { key: 'bgBase',     labelAr: 'خلفية الصفحة',    labelEn: 'Page Background',  hintAr: 'الخلفية الأساسية للتطبيق',   hintEn: 'Base application background' },
-      { key: 'bgCard',     labelAr: 'خلفية البطاقات',   labelEn: 'Card Surface',     hintAr: 'بطاقات وألواح المحتوى',      hintEn: 'Content cards & panels'      },
-      { key: 'bgElevated', labelAr: 'السطح المرتفع',    labelEn: 'Elevated Surface', hintAr: 'العناصر الداخلية المرفوعة',  hintEn: 'Nested / inner elements'     },
-    ],
-  },
-  {
-    group: 'text',
-    groupLabelAr: 'ألوان النصوص',
-    groupLabelEn: 'Typography',
-    items: [
-      { key: 'textBase',  labelAr: 'النص الأساسي', labelEn: 'Body Text',  hintAr: 'النص الرئيسي للمحتوى',     hintEn: 'Primary content text'     },
-      { key: 'textMuted', labelAr: 'النص الثانوي', labelEn: 'Muted Text', hintAr: 'النصوص الثانوية والرمادية', hintEn: 'Subtle / secondary text'  },
-    ],
-  },
-];
-
-const ThemeTab = ({ lang, lightColors, darkColors, onLightChange, onDarkChange, onReset }) => {
-  const ar = lang === 'ar';
-  const [activeMode, setActiveMode] = useState('dark');
-
-  const colors   = activeMode === 'light' ? lightColors : darkColors;
-  const onChange = activeMode === 'light' ? onLightChange : onDarkChange;
-
-  return (
-    <div className="space-y-8">
-
-      {/* Mode switcher */}
-      <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-xl w-fit">
-        {[
-          { mode: 'light', Icon: Sun,  labelAr: 'الوضع الفاتح', labelEn: 'Light Mode' },
-          { mode: 'dark',  Icon: Moon, labelAr: 'الوضع الداكن', labelEn: 'Dark Mode'  },
-        ].map(({ mode, Icon, labelAr, labelEn }) => (
-          <button
-            key={mode}
-            onClick={() => setActiveMode(mode)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeMode === mode
-                ? 'bg-white dark:bg-[#0a0f1e] text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <Icon size={15} />
-            {ar ? labelAr : labelEn}
-          </button>
-        ))}
-      </div>
-
-      {/* Color groups */}
-      {COLOR_ROWS.map(({ group, groupLabelAr, groupLabelEn, items }) => (
-        <div key={group}>
-          <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-4">
-            {ar ? groupLabelAr : groupLabelEn}
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {items.map(({ key, labelAr, labelEn, hintAr, hintEn }) => (
-              <div
-                key={key}
-                className="bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-2xl p-5 space-y-3"
-              >
-                <div>
-                  <p className="text-gray-900 dark:text-white font-medium text-sm">{ar ? labelAr : labelEn}</p>
-                  <p className="text-gray-400 dark:text-slate-500 text-xs mt-0.5">{ar ? hintAr : hintEn}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-12 h-12 rounded-xl border-2 border-gray-200 dark:border-white/10
-                               cursor-pointer flex-shrink-0 relative overflow-hidden"
-                    style={{ backgroundColor: colors[key] }}
-                  >
-                    <input
-                      type="color"
-                      value={colors[key]}
-                      onChange={e => onChange(key, e.target.value)}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    value={colors[key]}
-                    onChange={e => {
-                      if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) onChange(key, e.target.value);
-                    }}
-                    maxLength={7}
-                    className="flex-1 bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10
-                               rounded-xl px-3 py-2 text-gray-900 dark:text-white text-sm font-mono
-                               focus:border-blue-500 outline-none transition-all"
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-
-      {/* Live preview */}
-      <div className="bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-5">
-          <p className="text-gray-900 dark:text-white text-sm font-semibold">
-            {ar ? 'معاينة مباشرة' : 'Live Preview'}
-          </p>
-          <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20">
-            {activeMode === 'light' ? <Sun size={12} /> : <Moon size={12} />}
-            {ar
-              ? (activeMode === 'light' ? 'الوضع الفاتح' : 'الوضع الداكن')
-              : (activeMode === 'light' ? 'Light Mode'   : 'Dark Mode')}
-          </span>
-        </div>
-
-        {/* Mini UI skin */}
-        <div className="rounded-xl overflow-hidden border" style={{ backgroundColor: colors.bgBase, borderColor: colors.border }}>
-
-          {/* Toolbar */}
-          <div className="px-4 py-3 flex items-center gap-3 border-b" style={{ backgroundColor: colors.bgCard, borderColor: colors.border }}>
-            <div className="flex gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-400 opacity-70" />
-              <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 opacity-70" />
-              <div className="w-2.5 h-2.5 rounded-full bg-green-400 opacity-70" />
-            </div>
-            <div className="flex-1 h-2 rounded-full" style={{ backgroundColor: colors.bgElevated }} />
-            <div
-              className="px-3 py-1 rounded-lg text-xs font-semibold text-white flex-shrink-0"
-              style={{ backgroundColor: colors.accent }}
-            >
-              {ar ? 'حفظ' : 'Save'}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="p-4 space-y-3">
-            <div className="rounded-xl p-4 border" style={{ backgroundColor: colors.bgCard, borderColor: colors.border }}>
-              <p className="font-semibold text-sm mb-1" style={{ color: colors.textBase }}>
-                {ar ? 'عنوان البطاقة' : 'Card Title'}
-              </p>
-              <p className="text-xs" style={{ color: colors.textMuted }}>
-                {ar ? 'نص توضيحي ثانوي للعنصر' : 'Secondary descriptive text inside the card'}
-              </p>
-              <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: colors.bgElevated }}>
-                <div className="h-full w-3/5 rounded-full" style={{ backgroundColor: colors.accent }} />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2 items-center">
-              <button className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white" style={{ backgroundColor: colors.accent }}>
-                {ar ? 'رئيسي' : 'Primary'}
-              </button>
-              <button
-                className="px-4 py-1.5 rounded-lg text-xs font-medium border-2 bg-transparent"
-                style={{ borderColor: colors.accent2, color: colors.accent2 }}
-              >
-                {ar ? 'ثانوي' : 'Secondary'}
-              </button>
-              <span
-                className="inline-flex items-center px-3 py-1 rounded-full text-xs border font-medium"
-                style={{ backgroundColor: `${colors.accent3}22`, color: colors.accent3, borderColor: `${colors.accent3}44` }}
-              >
-                {ar ? 'شارة' : 'Badge'}
-              </span>
-              <span style={{ color: colors.accent }} className="text-xs font-medium cursor-pointer">
-                {ar ? 'رابط ←' : '→ Link'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <p className="text-xs text-gray-400 dark:text-slate-600 mt-3">
-          {ar
-            ? 'التغييرات تُطبَّق فورياً عبر CSS Variables. اضغط "حفظ" لتثبيتها.'
-            : 'Changes apply instantly via CSS Variables. Press "Save" to persist.'}
-        </p>
-      </div>
-
-      {/* Reset row */}
-      <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-white/5">
-        <p className="text-xs text-gray-400 dark:text-slate-500">
-          {ar ? 'استعادة الألوان الافتراضية' : 'Restore default colors'}
-        </p>
-        <button
-          onClick={onReset}
-          className="flex items-center gap-2 px-4 py-2.5 text-sm bg-gray-100 dark:bg-white/5
-                     text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-white/10
-                     rounded-xl hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
-        >
-          <RotateCcw size={14} />
-          {ar ? 'إعادة التعيين' : 'Reset Defaults'}
-        </button>
-      </div>
-
-    </div>
-  );
-};
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const GeneralSettings = () => {
   const { lang } = useLang();
   const ar = lang === 'ar';
-  const { customColors, previewColors, saveCustomColors, resetColors } = useTheme();
   const [activeTab, setActiveTab] = useState('identity');
   const [loading,   setLoading]   = useState(true);
   const [saving,    setSaving]    = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // ── Per-tab state ──────────────────────────────────────────────────────────
 
   const [identity, setIdentity] = useState({
     logo: null,
     favicon: null,
-    siteNameAr: 'كود لان التقنية',
-    siteNameEn: 'CodeLAN Tech',
-    taglineAr: 'نبني مستقبلك التقني',
-    taglineEn: 'We Build Your Tech Future',
+    taglineAr: '',
+    taglineEn: '',
   });
 
   const [contact, setContact] = useState({
-    email: 'info@codelan.com',
-    phone: '+967 770 000 000',
+    email: '',
+    phone: '',
     whatsappCountry: '+967',
-    whatsapp: '770 000 000',
-    addressAr: 'حضرموت - المكلا، اليمن',
-    addressEn: 'Hadhramaut - Al-Mukalla, Yemen',
+    whatsapp: '',
+    addressAr: '',
+    addressEn: '',
   });
 
-  const [socialLinks, setSocialLinks] = useState([
-    { id: 1, platform: 'facebook', url: 'https://facebook.com/codelan',  active: true  },
-    { id: 2, platform: 'github',   url: 'https://github.com/codelan',    active: true  },
-    { id: 3, platform: 'whatsapp', url: 'https://wa.me/967770000000',    active: true  },
-    { id: 4, platform: 'telegram', url: 'https://t.me/codelan',          active: false },
-  ]);
+  const [socialLinks, setSocialLinks] = useState([]);
 
   const [seo, setSeo] = useState({
-    metaTitleAr: 'كود لان | فريق التطوير البرمجي',
-    metaTitleEn: 'CodeLAN | Software Dev Team',
-    metaDescAr: 'نصمم ونبني منتجات رقمية استثنائية من حضرموت اليمن',
-    metaDescEn: 'We design and build exceptional digital products from Hadhramaut, Yemen',
-    keywords: ['React', 'Laravel', 'Web Development', 'SaaS', 'Yemen'],
+    metaTitleAr: '',
+    metaTitleEn: '',
+    metaDescAr: '',
+    metaDescEn: '',
+    keywords: [],
     ogImage: null,
   });
 
-  const [lightColors,  setLightColors]  = useState(() => ({ ...customColors.light }));
-  const [darkColors,   setDarkColors]   = useState(() => ({ ...customColors.dark  }));
 
   const initialPayloadRef = useRef(null);
 
@@ -892,8 +642,6 @@ const GeneralSettings = () => {
           ...prev,
           logo:       s.logo_url        ?? prev.logo,
           favicon:    s.favicon         ?? prev.favicon,
-          siteNameAr: s.company_name    ?? prev.siteNameAr,
-          siteNameEn: s.company_name_en ?? prev.siteNameEn,
           taglineAr:  s.tagline         ?? prev.taglineAr,
           taglineEn:  s.tagline_en      ?? prev.taglineEn,
         }));
@@ -928,7 +676,7 @@ const GeneralSettings = () => {
           { platform: 'telegram',  url: s.telegram  },
           { platform: 'discord',   url: s.discord   },
         ].filter(l => l.url).map((l, i) => ({ id: Date.now() + i, ...l, active: true }));
-        if (fromFields.length > 0) setSocialLinks(fromFields);
+        setSocialLinks(fromFields);
 
         // ── Tab 4: SEO ──────────────────────────────────────────────────
         setSeo(prev => ({
@@ -945,56 +693,19 @@ const GeneralSettings = () => {
                 : prev.keywords),
         }));
 
-        // ── Tab 5: الألوان والخطوط ──────────────────────────────────────
-        if (s.theme_light) {
-          try {
-            const lc = typeof s.theme_light === 'string' ? JSON.parse(s.theme_light) : s.theme_light;
-            setLightColors(prev => ({ ...prev, ...lc }));
-          } catch {}
-        }
-        if (s.theme_dark) {
-          try {
-            const dc = typeof s.theme_dark === 'string' ? JSON.parse(s.theme_dark) : s.theme_dark;
-            setDarkColors(prev => ({ ...prev, ...dc }));
-          } catch {}
-        }
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [reloadKey]);
 
   const setField = (setter) => (key, value) =>
     setter(prev => ({ ...prev, [key]: value }));
-
-  const onLightChange = (key, val) => {
-    setLightColors(prev => {
-      const next = { ...prev, [key]: val };
-      previewColors(next, darkColors);
-      return next;
-    });
-  };
-
-  const onDarkChange = (key, val) => {
-    setDarkColors(prev => {
-      const next = { ...prev, [key]: val };
-      previewColors(lightColors, next);
-      return next;
-    });
-  };
-
-  const onResetColors = () => {
-    resetColors();
-    setLightColors({ ...DEFAULT_LIGHT });
-    setDarkColors({ ...DEFAULT_DARK });
-  };
 
   // Builds the full settings payload from current state.
   // Used both for saving and for dirty-tracking comparisons.
   const buildPayload = () => {
     const sf = (p) => socialLinks.find(l => l.platform === p && l.url)?.url ?? null;
     return {
-      company_name:        identity.siteNameAr,
-      company_name_en:     identity.siteNameEn,
       tagline:             identity.taglineAr,
       tagline_en:          identity.taglineEn,
       logo_url:            identity.logo    || null,
@@ -1002,7 +713,7 @@ const GeneralSettings = () => {
       email:               contact.email,
       phone:               contact.phone,
       whatsapp:            contact.whatsapp
-        ? `${contact.whatsappCountry}${contact.whatsapp}`.trim()
+        ? `${contact.whatsappCountry}${String(contact.whatsapp).replace(/\D/g, '')}`
         : null,
       address:             contact.addressAr,
       address_en:          contact.addressEn,
@@ -1021,10 +732,19 @@ const GeneralSettings = () => {
       meta_description_en: seo.metaDescEn,
       keywords:            seo.keywords.join(', '),
       og_image:            seo.ogImage || null,
-      theme_light:         lightColors,
-      theme_dark:          darkColors,
     };
   };
+
+  // Capture what the server holds as the save baseline, once it has loaded.
+  // It used to be captured only after a first save, so the first save sent the
+  // entire form — and if loading had failed, that meant overwriting the live
+  // settings with whatever the form happened to contain.
+  useEffect(() => {
+    if (!loading && !loadError && !initialPayloadRef.current) initialPayloadRef.current = buildPayload();
+    // buildPayload reads the state this effect runs after; it only needs to run
+    // once loading settles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, loadError]);
 
   const toastStyle = {
     style: {
@@ -1035,20 +755,22 @@ const GeneralSettings = () => {
   };
 
   const validate = () => {
-    if (!identity.siteNameAr.trim() || !identity.siteNameEn.trim()) {
-      toast.error(
-        ar ? 'يرجى إدخال اسم الموقع بالعربي والإنجليزي.' : 'Site name (AR & EN) is required.',
-        toastStyle,
-      );
-      setActiveTab('identity');
-      return false;
-    }
     if (!contact.email.trim() || !contact.phone.trim()) {
       toast.error(
         ar ? 'البريد الإلكتروني والهاتف مطلوبان.' : 'Email and phone are required.',
         toastStyle,
       );
       setActiveTab('contact');
+      return false;
+    }
+    // The backend refuses (422) any link that is not https.
+    const badLink = socialLinks.find(l => l.url && !/^https:\/\/\S+$/i.test(l.url.trim()));
+    if (badLink) {
+      toast.error(
+        ar ? `رابط ${badLink.platform} يجب أن يبدأ بـ https://` : `The ${badLink.platform} link must start with https://`,
+        toastStyle,
+      );
+      setActiveTab('social');
       return false;
     }
     if (!seo.metaTitleAr.trim() || !seo.metaTitleEn.trim()) {
@@ -1065,7 +787,6 @@ const GeneralSettings = () => {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    saveCustomColors(lightColors, darkColors);
     try {
       const payload = buildPayload();
       const toSend  = getDiff(payload, initialPayloadRef.current);
@@ -1099,17 +820,22 @@ const GeneralSettings = () => {
     contact:  <ContactInfoTab  lang={lang} data={contact}     onChange={setField(setContact)}  />,
     social:   <SocialLinksTab  lang={lang} links={socialLinks} setLinks={setSocialLinks}        />,
     seo:      <SEOTab          lang={lang} data={seo}         onChange={setField(setSeo)}      />,
-    theme: (
-      <ThemeTab
-        lang={lang}
-        lightColors={lightColors}
-        darkColors={darkColors}
-        onLightChange={onLightChange}
-        onDarkChange={onDarkChange}
-        onReset={onResetColors}
-      />
-    ),
   };
+
+  if (!loading && loadError) return (
+    <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
+      <p className="text-gray-700 dark:text-slate-300">
+        {ar ? 'تعذّر تحميل الإعدادات من الخادم.' : 'Could not load settings from the server.'}
+      </p>
+      <p className="text-sm text-gray-500 dark:text-slate-400 max-w-sm">
+        {ar ? 'لم نعرض النموذج حتى لا يُحفظ فوق بياناتك الحقيقية بقيم فارغة.' : 'The form is hidden so a save cannot overwrite your real settings with blanks.'}
+      </p>
+      <button type="button" onClick={() => { setLoadError(false); setLoading(true); setReloadKey(k => k + 1); }}
+        className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold">
+        {ar ? 'إعادة المحاولة' : 'Try again'}
+      </button>
+    </div>
+  );
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">

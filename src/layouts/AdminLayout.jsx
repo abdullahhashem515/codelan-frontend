@@ -1,14 +1,35 @@
 // src/layouts/AdminLayout.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Wrench, FolderKanban, Layers, Inbox, BarChart3, Trophy,
-  FlaskConical, MessageCircle, Paperclip, HelpCircle, Settings, Globe,
-  Sun, Moon, Menu, X,
+  LayoutDashboard, Wrench, FolderKanban, Inbox, BarChart3, Workflow, Quote,
+  Newspaper, Settings, ExternalLink, Sun, Moon, Menu, X,
 } from 'lucide-react';
 import { useLang } from '../context/LangContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { apiGetDashboardStats } from '../services/api';
+
+// Grouped by what the admin is doing, most-used first. Tech Stack and FAQ are
+// gone: nothing on the site displays either. Labels drop the repeated
+// "إدارة" prefix, and achievements are named for where they actually appear.
+const MENU = [
+  { items: [
+    { path: '/admin',          icon: LayoutDashboard, labelAr: 'نظرة عامة',     labelEn: 'Overview' },
+    { path: '/admin/requests', icon: Inbox,           labelAr: 'طلبات العملاء', labelEn: 'Requests', badge: 'requests' },
+  ] },
+  { titleAr: 'محتوى الموقع', titleEn: 'Site content', items: [
+    { path: '/admin/projects',     icon: FolderKanban, labelAr: 'الأعمال',        labelEn: 'Work'         },
+    { path: '/admin/articles',     icon: Newspaper,    labelAr: 'المقالات',       labelEn: 'Articles'     },
+    { path: '/admin/services',     icon: Wrench,       labelAr: 'الخدمات',        labelEn: 'Services'     },
+    { path: '/admin/achievements', icon: BarChart3,    labelAr: 'أرقام الواجهة',  labelEn: 'Hero numbers' },
+    { path: '/admin/methodology',  icon: Workflow,     labelAr: 'منهجية العمل',   labelEn: 'Methodology'  },
+    { path: '/admin/testimonials', icon: Quote,        labelAr: 'شهادات العملاء', labelEn: 'Testimonials' },
+  ] },
+  { titleAr: 'النظام', titleEn: 'System', items: [
+    { path: '/admin/settings', icon: Settings, labelAr: 'الإعدادات', labelEn: 'Settings' },
+  ] },
+];
 
 const AdminLayout = () => {
   const { lang, setLang } = useLang();
@@ -19,26 +40,26 @@ const AdminLayout = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Close sidebar on route change (mobile nav)
+  // Unread requests on the sidebar, refreshed on every page change so the
+  // count drops as soon as they are handled.
+  const [newRequests, setNewRequests] = useState(0);
   useEffect(() => {
-    setSidebarOpen(false);
+    let active = true;
+    apiGetDashboardStats()
+      .then(res => { if (active) setNewRequests(Number(res.data?.new_requests) || 0); })
+      .catch(() => {});
+    return () => { active = false; };
   }, [location.pathname]);
 
-  const menuItems = [
-    { path: '/admin',              icon: LayoutDashboard, labelAr: 'لوحة القيادة',    labelEn: 'Dashboard'    },
-    { path: '/admin/services',     icon: Wrench,          labelAr: 'إدارة الخدمات',   labelEn: 'Services'     },
-    { path: '/admin/projects',     icon: FolderKanban,    labelAr: 'إدارة المشاريع',  labelEn: 'Projects'     },
-    { path: '/admin/tech-stack',   icon: Layers,          labelAr: 'إدارة التقنيات',  labelEn: 'Tech Stack'   },
-    { path: '/admin/requests',     icon: Inbox,           labelAr: 'طلبات العملاء',   labelEn: 'Requests'     },
-    { path: '/admin/stats',        icon: BarChart3,       labelAr: 'الإحصائيات',      labelEn: 'Stats'        },
-    { path: '/admin/achievements', icon: Trophy,          labelAr: 'الإنجازات',       labelEn: 'Achievements' },
-    { path: '/admin/methodology',  icon: FlaskConical,    labelAr: 'منهجية العمل',    labelEn: 'Methodology'  },
-    { path: '/admin/testimonials', icon: MessageCircle,   labelAr: 'شهادات العملاء',  labelEn: 'Testimonials' },
-    { path: '/admin/articles',     icon: Paperclip,       labelAr: 'إدارة المقالات',  labelEn: 'Articles'     },
-    { path: '/admin/faq',          icon: HelpCircle,      labelAr: 'الأسئلة الشائعة', labelEn: 'FAQ'          },
-    { path: '/admin/settings',     icon: Settings,        labelAr: 'الإعدادات',       labelEn: 'Settings'     },
-    { path: '/',                   icon: Globe,           labelAr: 'العودة للموقع',   labelEn: 'Back to Site' },
-  ];
+  // Close the sidebar on route change (mobile nav). Adjusting during render
+  // rather than in an effect means the new page never paints once with the
+  // old sidebar state and then again after it closes.
+  const [renderedPath, setRenderedPath] = useState(location.pathname);
+  if (renderedPath !== location.pathname) {
+    setRenderedPath(location.pathname);
+    setSidebarOpen(false);
+  }
+
 
   const handleLogout = () => {
     logout();
@@ -91,24 +112,55 @@ const AdminLayout = () => {
 
         {/* Nav links */}
         <nav className="flex-1 py-6 px-4 space-y-1.5 overflow-y-auto">
-          {menuItems.map((item, idx) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={idx}
-                to={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  isActive
-                    ? 'bg-blue-600/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
-                    : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'
-                }`}
-              >
-                <Icon size={18} className="flex-shrink-0" />
-                <span className="font-medium text-sm">{lang === 'ar' ? item.labelAr : item.labelEn}</span>
-              </Link>
-            );
-          })}
+          {MENU.map((group, gi) => (
+            <div key={gi} className={gi > 0 ? 'pt-4 mt-4 border-t border-gray-200 dark:border-white/5' : ''}>
+              {group.titleAr && (
+                <div className="px-4 mb-2 text-[11px] rtl:text-xs font-semibold text-gray-400 dark:text-slate-500 ltr:uppercase ltr:tracking-wider">
+                  {lang === 'ar' ? group.titleAr : group.titleEn}
+                </div>
+              )}
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  const Icon = item.icon;
+                  const count = item.badge === 'requests' ? newRequests : 0;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-colors ${
+                        isActive
+                          ? 'bg-blue-600/10 text-blue-600 dark:text-blue-400 border border-blue-500/20'
+                          : 'border border-transparent text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <Icon size={18} className="flex-shrink-0" />
+                      <span className="flex-1 font-medium text-sm">{lang === 'ar' ? item.labelAr : item.labelEn}</span>
+                      {count > 0 && (
+                        <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center">
+                          {count > 99 ? '99+' : count}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* The public site, in a new tab — the admin session stays open here. */}
+          <div className="pt-4 mt-4 border-t border-gray-200 dark:border-white/5">
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-transparent text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              <ExternalLink size={18} className="flex-shrink-0" />
+              <span className="font-medium text-sm">{lang === 'ar' ? 'عرض الموقع' : 'View site'}</span>
+            </a>
+          </div>
         </nav>
       </aside>
 

@@ -1,9 +1,14 @@
 // src/pages/admin/ManageProjects.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, Layers, Pencil, Trash2, AlertTriangle } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
-import { apiGetProjects, apiCreateProject, apiUpdateProject, apiDeleteProject } from '../../services/api';
+import { apiGetAllProjects, apiCreateProject, apiUpdateProject, apiDeleteProject } from '../../services/api';
+import ImageUpload from '../../components/ImageUpload';
+import TechPicker from '../../components/TechPicker';
+import { parseVideo } from '../../utils/video';
+import { parseResults } from '../../utils/project';
+import { WORK_KINDS, kindOf, usesCreativeTools } from '../../utils/workKinds';
 
 // ── Shared input style (light + dark) ────────────────────────────────────────
 const inputCls =
@@ -17,24 +22,66 @@ const SectionLabel = ({ children }) => (
   </div>
 );
 
-const MetricRow = ({ metric, index, onChange, onRemove }) => (
-  <div className="grid grid-cols-12 gap-2 items-center bg-gray-50 dark:bg-[#050810]/50 p-3 rounded-xl border border-gray-200 dark:border-white/10">
-    <div className="col-span-2">
-      <input type="text" value={metric.val} onChange={e => onChange(index, 'val', e.target.value)} placeholder="10K" dir="ltr" className={`${inputCls} text-center font-mono font-bold`} />
-    </div>
-    <div className="col-span-4">
-      <input type="text" value={metric.lbl.ar} onChange={e => onChange(index, 'lblAr', e.target.value)} placeholder="وصف عربي" className={inputCls} />
-    </div>
-    <div className="col-span-5">
-      <input type="text" value={metric.lbl.en} onChange={e => onChange(index, 'lblEn', e.target.value)} placeholder="English label" dir="ltr" className={`${inputCls} font-english`} />
-    </div>
-    <div className="col-span-1 flex justify-center">
-      <button type="button" onClick={() => onRemove(index)} className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
-        <X size={14} />
-      </button>
-    </div>
-  </div>
-);
+// The backend refuses any link that is not https (422); checked here first.
+const HTTPS = { type: 'url', pattern: 'https://.+', title: 'https://…' };
+
+// ── Per-kind wording ─────────────────────────────────────────────────────────
+// What the form asks for changes with the kind of work: a website for web, the
+// stores for an app, a video for motion, the account for social media.
+const TYPE_HINTS = {
+  web:    { ar: 'تُعرض اللقطة داخل إطار متصفح.', en: 'The screenshot is shown in a browser frame.' },
+  mobile: { ar: 'تُعرض اللقطة داخل إطار هاتف.', en: 'The screenshot is shown in a phone frame.' },
+  design: { ar: 'تُعرض التصاميم بأبعادها الأصلية كمعرض، بلا إطار.', en: 'Designs are shown at their own proportions, as a gallery.' },
+  motion: { ar: 'يُعرض الفيديو في صفحة العمل، ولا يُحمَّل إلا عند الضغط على تشغيل.', en: 'The video plays on the work page, loaded only when play is pressed.' },
+  infra:  { ar: 'تُعرض صور التركيب كمعرض بأبعادها الأصلية.', en: 'Installation photos are shown as a gallery, at their own proportions.' },
+  social: { ar: 'تُعرض النتائج ثم منشورات الحساب كشبكة.', en: 'Shows the results, then the account\'s posts as a grid.' },
+};
+
+const LINK_LABELS = {
+  web:    { ar: 'رابط الموقع', en: 'Website link' },
+  design: { ar: 'رابط العمل على Behance أو Dribbble (اختياري)', en: 'Behance or Dribbble link (optional)' },
+  social: { ar: 'رابط الحساب (اختياري)', en: 'Account link (optional)' },
+  infra:  { ar: 'رابط (اختياري)', en: 'Link (optional)' },
+};
+
+const IMAGE_TEXT = {
+  web: {
+    cover: { ar: ['صورة المشروع (لقطة شاشة)', 'لقطة أفقية من المتصفح (16:10 تقريباً)'], en: ['Project image (screenshot)', 'A landscape browser screenshot (roughly 16:10)'] },
+    more:  { ar: ['لقطات إضافية (تظهر كشرائح عند فتح المشروع)', 'الصورة الرئيسية أعلاه هي الأولى في المعرض'], en: ['More screenshots (shown as slides)', 'The cover above is the first slide'] },
+  },
+  mobile: {
+    cover: { ar: ['صورة المشروع (لقطة شاشة)', 'لقطة عمودية من الهاتف (9:16 تقريباً)'], en: ['Project image (screenshot)', 'A portrait phone screenshot (roughly 9:16)'] },
+    more:  { ar: ['لقطات إضافية (تظهر كشرائح عند فتح المشروع)', 'الصورة الرئيسية أعلاه هي الأولى في المعرض'], en: ['More screenshots (shown as slides)', 'The cover above is the first slide'] },
+  },
+  design: {
+    cover: { ar: ['التصميم الأبرز (الغلاف)', 'أي مقاس — يظهر بأبعاده الأصلية'], en: ['Lead design (cover)', 'Any size — shown at its own proportions'] },
+    more:  { ar: ['بقية التصاميم (تظهر كمعرض في صفحة العمل)', 'بوسترات، منشورات، هوية — كل صورة وحدها'], en: ['The other designs (shown as a gallery)', 'Posters, posts, branding — one image each'] },
+  },
+  motion: {
+    cover: { ar: ['صورة غلاف الفيديو (اختيارية)', 'إن تُركت فارغة تُستخدم صورة الفيديو من YouTube'], en: ['Video cover (optional)', 'Left empty, the YouTube thumbnail is used'] },
+    more:  { ar: ['لقطات من الفيديو (اختياري)', 'تظهر تحت الفيديو'], en: ['Stills from the video (optional)', 'Shown under the video'] },
+  },
+  infra: {
+    cover: { ar: ['صورة الغلاف (أوضح صورة للنظام يعمل)', 'شاشة العرض أو الكاميرا بعد التركيب'], en: ['Cover (the clearest shot of the system working)', 'The monitor or a camera once installed'] },
+    more:  { ar: ['صور التركيب والتشغيل', 'مراحل العمل، المعدات، المشاهدة من الجوال'], en: ['Installation and operation photos', 'Work stages, equipment, viewing on a phone'] },
+  },
+  social: {
+    cover: { ar: ['صورة الغلاف (شعار الحساب أو أبرز منشور)', 'مربعة يُفضّل'], en: ['Cover (account logo or a top post)', 'Square works best'] },
+    more:  { ar: ['منشورات من الحساب', 'أضف 5 أو 8 لتكتمل شبكة 6 أو 9 مع الغلاف'], en: ['Posts from the account', 'Add 5 or 8 to make a grid of 6 or 9 with the cover'] },
+  },
+};
+
+const MAX_RESULTS = 4;
+
+// Example text inside the inputs, so a poster is not described as a SaaS platform.
+const PLACEHOLDERS = {
+  web:    { cat: ['منصة SaaS', 'SaaS Platform'],      title: ['منصة إدارة الأعمال...', 'Smart ERP Platform'] },
+  mobile: { cat: ['تطبيق توصيل', 'Delivery app'],     title: ['تطبيق طلبات المطعم...', 'Restaurant ordering app'] },
+  design: { cat: ['بوسترات', 'Posters'],              title: ['حملة رمضان لـ...', 'Ramadan campaign for...'] },
+  motion: { cat: ['فيديو تعريفي', 'Explainer video'], title: ['فيديو تعريفي لخدمة...', 'Explainer for...'] },
+  infra:  { cat: ['تركيب كاميرات مراقبة', 'CCTV installation'], title: ['اسم العميل أو الموقع', 'Client or site name'] },
+  social: { cat: ['إدارة حسابات', 'Social media'],    title: ['اسم العميل أو الحساب', 'Client or account name'] },
+};
 
 // ── Field mappers ──────────────────────────────────────────────────────────
 const toForm = (p) => ({
@@ -45,16 +92,19 @@ const toForm = (p) => ({
   titleEn:          p.title_en          ?? '',
   descriptionAr:    p.description       ?? '',
   descriptionEn:    p.description_en    ?? '',
-  fullDescriptionAr: p.full_description  ?? '',
-  fullDescriptionEn: p.full_description_en ?? '',
-  featuresAr:       Array.isArray(p.features)    ? p.features    : (p.features    ? JSON.parse(p.features)    : []),
-  featuresEn:       Array.isArray(p.features_en) ? p.features_en : (p.features_en ? JSON.parse(p.features_en) : []),
-  metrics:          Array.isArray(p.metrics)     ? p.metrics     : (p.metrics     ? JSON.parse(p.metrics)     : [{ val: '', lbl: { ar: '', en: '' } }]),
-  stack:            p.stack             ?? '',
   technologies:     Array.isArray(p.technologies) ? p.technologies : (p.technologies ? JSON.parse(p.technologies) : []),
+  imageUrl:         p.image_url ?? p.cover_image ?? p.image ?? '',
+  type:             p.project_type ?? p.type ?? 'web',
+  bodyAr:           p.full_description    ?? '',
+  bodyEn:           p.full_description_en ?? '',
+  images:           Array.isArray(p.images) ? p.images : (typeof p.images === 'string' && p.images ? (() => { try { return JSON.parse(p.images); } catch { return []; } })() : []),
+  appStoreUrl:      p.app_store_url     ?? '',
+  playStoreUrl:     p.play_store_url    ?? '',
   thumbGradient:    p.thumb_gradient    ?? 'from-[#0a1628] via-[#162a4a] to-[#1e3a6e]',
   strokeColor:      p.stroke_color      ?? '#3b82f6',
-  projectUrl:       p.project_url       ?? '#',
+  projectUrl:       p.project_url       ?? '',
+  videoUrl:         p.video_url         ?? '',
+  results:          parseResults(p.results).map(r => ({ label: r.label, labelEn: r.labelEn, value: r.value })),
   status:           p.status            ?? 'active',
 });
 
@@ -65,16 +115,23 @@ const toApi = (f) => ({
   title_en:            f.titleEn,
   description:         f.descriptionAr,
   description_en:      f.descriptionEn,
-  full_description:    f.fullDescriptionAr,
-  full_description_en: f.fullDescriptionEn,
-  features:            f.featuresAr,
-  features_en:         f.featuresEn,
-  metrics:             f.metrics,
-  stack:               f.stack,
   technologies:        f.technologies,
+  image_url:           f.imageUrl,
+  project_type:        f.type,
+  full_description:    f.bodyAr,
+  full_description_en: f.bodyEn,
+  images:              f.images,
+  app_store_url:       f.appStoreUrl,
+  play_store_url:      f.playStoreUrl,
   thumb_gradient:      f.thumbGradient,
   stroke_color:        f.strokeColor,
   project_url:         f.projectUrl,
+  // Kind-specific fields are cleared when the project is another kind, so a
+  // project switched from motion to design does not keep a stale video.
+  video_url:           f.type === 'motion' ? f.videoUrl.trim() || null : null,
+  results:             f.type === 'social'
+    ? f.results.filter(r => r.label.trim() && r.value.trim()).map(r => ({ label: r.label.trim(), label_en: r.labelEn.trim(), value: r.value.trim() }))
+    : null,
   status:              f.status,
 });
 
@@ -83,14 +140,17 @@ const EMPTY_FORM = {
   categoryAr: '', categoryEn: '',
   titleAr: '', titleEn: '',
   descriptionAr: '', descriptionEn: '',
-  fullDescriptionAr: '', fullDescriptionEn: '',
-  featuresAr: [], featuresEn: [],
-  metrics: [{ val: '', lbl: { ar: '', en: '' } }],
-  stack: '',
   technologies: [],
+  imageUrl: '',
+  type: 'web',
+  bodyAr: '', bodyEn: '',
+  images: [],
+  appStoreUrl: '', playStoreUrl: '',
   thumbGradient: 'from-[#0a1628] via-[#162a4a] to-[#1e3a6e]',
   strokeColor: '#3b82f6',
-  projectUrl: '#',
+  projectUrl: '',
+  videoUrl: '',
+  results: [],
   status: 'active',
 };
 
@@ -108,7 +168,7 @@ const ManageProjects = () => {
   const [formData, setFormData]           = useState(EMPTY_FORM);
 
   useEffect(() => {
-    apiGetProjects()
+    apiGetAllProjects()
       .then(res => setProjects((res.data ?? []).map(toForm)))
       .catch(() => setProjects([]))
       .finally(() => setLoading(false));
@@ -117,26 +177,9 @@ const ManageProjects = () => {
   // ── Form helpers ──────────────────────────────────────────────────────────
   const setField = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
 
-  const handleMetricChange = (index, field, value) => {
-    const updated = [...formData.metrics];
-    if (field === 'val') updated[index] = { ...updated[index], val: value };
-    else if (field === 'lblAr') updated[index] = { ...updated[index], lbl: { ...updated[index].lbl, ar: value } };
-    else if (field === 'lblEn') updated[index] = { ...updated[index], lbl: { ...updated[index].lbl, en: value } };
-    setField('metrics', updated);
-  };
-
-  const addMetric = () => {
-    if (formData.metrics.length < 5) setField('metrics', [...formData.metrics, { val: '', lbl: { ar: '', en: '' } }]);
-  };
-
-  const removeMetric = (index) => setField('metrics', formData.metrics.filter((_, i) => i !== index));
-
-  const parseFeaturesText = (text) => text.split('\n').map(f => f.trim()).filter(Boolean);
-  const joinFeaturesText = (arr) => (arr || []).join('\n');
-
   // ── CRUD ──────────────────────────────────────────────────────────────────
   const handleOpenAddModal = () => {
-    setFormData({ ...EMPTY_FORM, metrics: [{ val: '', lbl: { ar: '', en: '' } }] });
+    setFormData(EMPTY_FORM);
     setModalMode('add');
     setIsFormModalOpen(true);
   };
@@ -149,6 +192,10 @@ const ManageProjects = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (formData.type === 'motion' && !parseVideo(formData.videoUrl)) {
+      alert(ar ? 'أضف رابط فيديو صحيحاً من YouTube أو Vimeo.' : 'Add a valid YouTube or Vimeo link.');
+      return;
+    }
     setSaving(true);
     try {
       if (modalMode === 'add') {
@@ -178,6 +225,11 @@ const ManageProjects = () => {
     setProjectToDelete(null);
   };
 
+  const ph = PLACEHOLDERS[kindOf(formData.type)];
+  const imgKind = IMAGE_TEXT[kindOf(formData.type)];
+  const imgText = { cover: imgKind.cover[ar ? 'ar' : 'en'], more: imgKind.more[ar ? 'ar' : 'en'] };
+  const setResult = (i, key, value) => setField('results', formData.results.map((r, j) => (j === i ? { ...r, [key]: value } : r)));
+
   // ── Render ────────────────────────────────────────────────────────────────
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -199,15 +251,15 @@ const ManageProjects = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
             <Layers className="text-blue-500 w-6 h-6" />
-            {ar ? 'إدارة المشاريع (Portfolio)' : 'Manage Projects (Portfolio)'}
+            {ar ? 'إدارة الأعمال (Portfolio)' : 'Manage Work (Portfolio)'}
           </h1>
           <p className="text-gray-500 dark:text-slate-400 text-sm">
-            {ar ? 'أضف أعمالكم السابقة مع جميع تفاصيل الصفحة التفصيلية' : 'Add past projects with full detail page content'}
+            {ar ? 'برمجيات، تصاميم، موشن، وإدارة حسابات — لكلٍّ طريقة عرض تناسبه' : 'Software, design, motion and social media — each shown its own way'}
           </p>
         </div>
         <button onClick={handleOpenAddModal} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2.5 rounded-xl font-medium transition-colors shadow-lg shadow-blue-600/20 flex items-center gap-2 w-fit">
           <Plus size={18} />
-          {ar ? 'إضافة مشروع جديد' : 'Add New Project'}
+          {ar ? 'إضافة عمل جديد' : 'Add New Work'}
         </button>
       </div>
 
@@ -233,9 +285,12 @@ const ManageProjects = () => {
                 <tr key={project.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors group text-sm">
                   <td className="p-4 text-center text-gray-400 dark:text-slate-500 font-mono">{idx + 1}</td>
                   <td className="p-4">
-                    <span className="font-mono text-[10px] text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
-                      {ar ? project.categoryAr : project.categoryEn}
-                    </span>
+                    <div className="flex flex-col items-start gap-1">
+                      <span className="text-[10px] text-gray-500 dark:text-slate-400">{WORK_KINDS[kindOf(project.type)][ar ? 'ar' : 'en']}</span>
+                      <span className="font-mono text-[10px] text-blue-400 bg-blue-500/10 px-2 py-1 rounded">
+                        {ar ? project.categoryAr : project.categoryEn}
+                      </span>
+                    </div>
                   </td>
                   <td className="p-4">
                     <div className="font-medium text-gray-900 dark:text-white">{ar ? project.titleAr : project.titleEn}</div>
@@ -286,13 +341,13 @@ const ManageProjects = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsFormModalOpen(false)} className="absolute inset-0 bg-[#050810]/80 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-4xl bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+              className="relative w-full max-w-4xl bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-full"
             >
               {/* Header */}
               <div className="p-6 border-b border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-[#111827] flex justify-between items-center flex-shrink-0">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <Layers className="text-blue-500 w-5 h-5" />
-                  {modalMode === 'add' ? (ar ? 'إضافة مشروع جديد' : 'Add New Project') : (ar ? 'تعديل المشروع' : 'Edit Project')}
+                  {modalMode === 'add' ? (ar ? 'إضافة عمل جديد' : 'Add New Work') : (ar ? 'تعديل العمل' : 'Edit Work')}
                 </h2>
                 <button onClick={() => setIsFormModalOpen(false)} className="text-gray-400 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors"><X size={18} /></button>
               </div>
@@ -306,27 +361,41 @@ const ManageProjects = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'التصنيف (عربي)' : 'Category (AR)'}</label>
-                      <input required placeholder="منصة SaaS" dir="rtl" className={inputCls} value={formData.categoryAr} onChange={e => setField('categoryAr', e.target.value)} />
+                      <input required placeholder={ph.cat[0]} dir="rtl" className={inputCls} value={formData.categoryAr} onChange={e => setField('categoryAr', e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'التصنيف (إنجليزي)' : 'Category (EN)'}</label>
-                      <input required placeholder="SaaS Platform" dir="ltr" className={`${inputCls} font-english`} value={formData.categoryEn} onChange={e => setField('categoryEn', e.target.value)} />
+                      <input required placeholder={ph.cat[1]} dir="ltr" className={`${inputCls} font-english`} value={formData.categoryEn} onChange={e => setField('categoryEn', e.target.value)} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'عنوان المشروع (عربي)' : 'Project Title (AR)'}</label>
-                      <input required placeholder="منصة إدارة الأعمال..." dir="rtl" className={inputCls} value={formData.titleAr} onChange={e => setField('titleAr', e.target.value)} />
+                      <input required placeholder={ph.title[0]} dir="rtl" className={inputCls} value={formData.titleAr} onChange={e => setField('titleAr', e.target.value)} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'عنوان المشروع (إنجليزي)' : 'Project Title (EN)'}</label>
-                      <input required placeholder="Smart ERP Platform" dir="ltr" className={`${inputCls} font-english`} value={formData.titleEn} onChange={e => setField('titleEn', e.target.value)} />
+                      <input required placeholder={ph.title[1]} dir="ltr" className={`${inputCls} font-english`} value={formData.titleEn} onChange={e => setField('titleEn', e.target.value)} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'رابط المشروع' : 'Project URL'}</label>
-                      <input placeholder="https://..." dir="ltr" className={`${inputCls} font-english`} value={formData.projectUrl} onChange={e => setField('projectUrl', e.target.value)} />
+                      <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'نوع العمل' : 'Kind of work'}</label>
+                      <select className={inputCls} value={formData.type} onChange={e => setField('type', e.target.value)}>
+                        <optgroup label={ar ? 'برمجيات' : 'Software'}>
+                          <option value="web">{ar ? 'تطبيق ويب' : 'Web app'}</option>
+                          <option value="mobile">{ar ? 'تطبيق موبايل' : 'Mobile app'}</option>
+                        </optgroup>
+                        <optgroup label={ar ? 'تصميم ومحتوى' : 'Design & content'}>
+                          <option value="design">{ar ? 'تصميم — بوسترات، هوية، إعلانات' : 'Design — posters, branding, ads'}</option>
+                          <option value="motion">{ar ? 'موشن جرافيك — فيديو' : 'Motion graphics — video'}</option>
+                          <option value="social">{ar ? 'إدارة حسابات التواصل' : 'Social media management'}</option>
+                        </optgroup>
+                        <optgroup label={ar ? 'تركيبات ميدانية' : 'Field installations'}>
+                          <option value="infra">{ar ? 'شبكات وأنظمة مراقبة' : 'Networks & surveillance'}</option>
+                        </optgroup>
+                      </select>
+                      <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5">{TYPE_HINTS[kindOf(formData.type)][ar ? 'ar' : 'en']}</p>
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'الحالة' : 'Status'}</label>
@@ -335,23 +404,117 @@ const ManageProjects = () => {
                         <option value="inactive">{ar ? 'معطل' : 'Inactive'}</option>
                       </select>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'تدرج الغلاف (Tailwind from/via/to)' : 'Cover Gradient (Tailwind from/via/to)'}</label>
-                      <input placeholder="from-[#0a1628] via-[#162a4a] to-[#1e3a6e]" dir="ltr" className={`${inputCls} font-english text-xs`} value={formData.thumbGradient} onChange={e => setField('thumbGradient', e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'لون الخط المميز' : 'Stroke / Accent Color'}</label>
-                      <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl border-2 border-gray-200 dark:border-white/10 overflow-hidden cursor-pointer flex-shrink-0 relative" style={{ backgroundColor: formData.strokeColor }}>
-                          <input type="color" value={formData.strokeColor} onChange={e => setField('strokeColor', e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+
+                    {formData.type === 'mobile' ? (
+                      <>
+                        <div>
+                          <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'رابط App Store' : 'App Store link'}</label>
+                          <input {...HTTPS} placeholder="https://apps.apple.com/..." dir="ltr" className={`${inputCls} font-english`} value={formData.appStoreUrl} onChange={e => setField('appStoreUrl', e.target.value)} />
                         </div>
-                        <input type="text" value={formData.strokeColor} dir="ltr" maxLength={7} className={`${inputCls} font-mono text-sm`} onChange={e => { if (/^#[0-9A-Fa-f]{0,6}$/.test(e.target.value)) setField('strokeColor', e.target.value); }} />
+                        <div>
+                          <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'رابط Google Play' : 'Google Play link'}</label>
+                          <input {...HTTPS} placeholder="https://play.google.com/..." dir="ltr" className={`${inputCls} font-english`} value={formData.playStoreUrl} onChange={e => setField('playStoreUrl', e.target.value)} />
+                        </div>
+                      </>
+                    ) : formData.type === 'motion' ? (
+                      <div className="col-span-2">
+                        <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'رابط الفيديو — YouTube أو Vimeo' : 'Video link — YouTube or Vimeo'}</label>
+                        <input {...HTTPS} required placeholder="https://www.youtube.com/watch?v=..." dir="ltr" className={`${inputCls} font-english`} value={formData.videoUrl} onChange={e => setField('videoUrl', e.target.value)} />
+                        {formData.videoUrl.trim() && (
+                          parseVideo(formData.videoUrl)
+                            ? <p className="text-[11px] text-green-600 dark:text-green-400 mt-1.5">{ar ? `✓ رابط ${parseVideo(formData.videoUrl).provider === 'youtube' ? 'YouTube' : 'Vimeo'} صالح` : `✓ Valid ${parseVideo(formData.videoUrl).provider === 'youtube' ? 'YouTube' : 'Vimeo'} link`}</p>
+                            : <p className="text-[11px] text-red-500 mt-1.5">{ar ? 'رابط غير مدعوم — انسخ رابط الفيديو من YouTube أو Vimeo مباشرة.' : 'Unsupported link — copy the video link straight from YouTube or Vimeo.'}</p>
+                        )}
+                        <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5">
+                          {ar ? 'يمكن رفع الفيديو على YouTube كـ «غير مدرج» (Unlisted) فلا يظهر في قناتكم ويعمل هنا.' : 'An Unlisted YouTube video works here without appearing on your channel.'}
+                        </p>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="col-span-2">
+                        <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{LINK_LABELS[kindOf(formData.type)][ar ? 'ar' : 'en']}</label>
+                        <input {...HTTPS} placeholder="https://..." dir="ltr" className={`${inputCls} font-english`} value={formData.projectUrl} onChange={e => setField('projectUrl', e.target.value)} />
+                      </div>
+                    )}
                   </div>
+                  {/* صورة الغلاف الحقيقية — لقطة شاشة للمشروع. إن تُركت فارغة
+                      يعرض الموقع الرسم التوضيحي المتدرّج كما كان سابقاً. */}
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{imgText.cover[0]}</label>
+                    <ImageUpload
+                      value={formData.imageUrl}
+                      onChange={url => setField('imageUrl', url)}
+                      label={ar ? 'اضغط لرفع صورة' : 'Click to upload an image'}
+                      hint={imgText.cover[1]}
+                      previewClass="max-h-52"
+                    />
+                    {formData.imageUrl && (
+                      <button type="button" onClick={() => setField('imageUrl', '')} className="mt-2 text-xs text-red-400 hover:text-red-300">
+                        {ar ? 'إزالة الصورة' : 'Remove image'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* لقطات إضافية — تظهر كشرائح داخل معرض المشروع */}
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">
+                      {imgText.more[0]}
+                    </label>
+                    {formData.images.length > 0 && (
+                      <div className="flex flex-wrap gap-3 mb-3">
+                        {formData.images.map((url) => (
+                          <div key={url} className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 group">
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setField('images', formData.images.filter(u => u !== url))}
+                              className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                              aria-label={ar ? 'إزالة' : 'Remove'}
+                            >
+                              <X size={18} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <ImageUpload
+                      value=""
+                      multiple
+                      onChange={url => url && setFormData(prev => (prev.images.includes(url) ? prev : { ...prev, images: [...prev.images, url] }))}
+                      label={ar ? 'أضف صوراً — يمكن اختيار عدة صور معاً' : 'Add images — several at once is fine'}
+                      hint={imgText.more[1]}
+                    />
+                  </div>
+
                 </div>
+
+                {/* Results — social media management only */}
+                {formData.type === 'social' && (
+                  <div className="space-y-3">
+                    <SectionLabel>{ar ? 'النتائج (اختياري)' : 'Results (optional)'}</SectionLabel>
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400/90">
+                      {ar
+                        ? 'أرقام حقيقية فقط، وبموافقة العميل. مثال: «نمو المتابعين» ‎+45%، «الوصول الشهري» 120K، «مدة الإدارة» 6 أشهر.'
+                        : 'Real numbers only, with the client\'s consent. E.g. "Follower growth" +45%, "Monthly reach" 120K, "Managed for" 6 months.'}
+                    </p>
+                    {formData.results.map((r, i) => (
+                      <div key={i} className="grid grid-cols-[1fr_1fr_7rem_auto] gap-2 items-center">
+                        <input required placeholder={ar ? 'الوصف (عربي)' : 'Label (AR)'} dir="rtl" maxLength={40} className={inputCls} value={r.label} onChange={e => setResult(i, 'label', e.target.value)} />
+                        <input placeholder="Label (EN)" dir="ltr" maxLength={40} className={`${inputCls} font-english`} value={r.labelEn} onChange={e => setResult(i, 'labelEn', e.target.value)} />
+                        <input required placeholder="+45%" dir="ltr" maxLength={12} className={`${inputCls} font-english text-center`} value={r.value} onChange={e => setResult(i, 'value', e.target.value)} />
+                        <button type="button" onClick={() => setField('results', formData.results.filter((_, j) => j !== i))}
+                          aria-label={ar ? 'حذف' : 'Remove'} className="w-10 h-10 rounded-lg text-red-500 hover:bg-red-500/10 flex items-center justify-center">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    {formData.results.length < MAX_RESULTS && (
+                      <button type="button" onClick={() => setField('results', [...formData.results, { label: '', labelEn: '', value: '' }])}
+                        className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                        <Plus size={16} /> {ar ? 'إضافة نتيجة' : 'Add a result'}
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Section 2: Descriptions */}
                 <div className="space-y-4">
@@ -359,76 +522,42 @@ const ManageProjects = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'وصف مختصر (عربي) — يظهر في القائمة' : 'Short Desc (AR) — shown in listing'}</label>
-                      <textarea rows="2" placeholder="وصف قصير للعرض في قائمة المشاريع..." dir="rtl" className={`${inputCls} resize-none`} value={formData.descriptionAr} onChange={e => setField('descriptionAr', e.target.value)} />
+                      <textarea rows="2" maxLength={160} placeholder="وصف قصير للعرض في قائمة المشاريع..." dir="rtl" className={`${inputCls} resize-none`} value={formData.descriptionAr} onChange={e => setField('descriptionAr', e.target.value)} />
+                      <div className="text-[11px] text-gray-400 dark:text-slate-500 mt-1 text-end font-mono">{formData.descriptionAr.length}/160</div>
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'وصف مختصر (إنجليزي)' : 'Short Desc (EN)'}</label>
-                      <textarea rows="2" placeholder="Short description for projects listing..." dir="ltr" className={`${inputCls} resize-none font-english`} value={formData.descriptionEn} onChange={e => setField('descriptionEn', e.target.value)} />
+                      <textarea rows="2" maxLength={160} placeholder="Short description for projects listing..." dir="ltr" className={`${inputCls} resize-none font-english`} value={formData.descriptionEn} onChange={e => setField('descriptionEn', e.target.value)} />
+                      <div className="text-[11px] text-gray-400 dark:text-slate-500 mt-1 text-end font-mono">{formData.descriptionEn.length}/160</div>
                     </div>
                   </div>
+
+                  {/* نص صفحة المشروع — اختياري، لكنه ما يجعل الصفحة المستقلة
+                      تستحق الوجود لدى محركات البحث بدل صفحة شبه فارغة. */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'وصف تفصيلي (عربي) — يظهر في صفحة التفاصيل' : 'Full Desc (AR) — shown on detail page'}</label>
-                      <textarea rows="4" placeholder="الوصف الكامل للصفحة التفصيلية..." dir="rtl" className={`${inputCls} resize-none`} value={formData.fullDescriptionAr} onChange={e => setField('fullDescriptionAr', e.target.value)} />
+                      <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'نص صفحة المشروع (عربي) — اختياري' : 'Project page text (AR) — optional'}</label>
+                      <textarea rows="5" placeholder="فقرة أو فقرتان عن المشروع: المشكلة، ما بنيناه، النتيجة..." dir="rtl" className={`${inputCls} resize-none`} value={formData.bodyAr} onChange={e => setField('bodyAr', e.target.value)} />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'وصف تفصيلي (إنجليزي)' : 'Full Desc (EN)'}</label>
-                      <textarea rows="4" placeholder="Full description for the detail page..." dir="ltr" className={`${inputCls} resize-none font-english`} value={formData.fullDescriptionEn} onChange={e => setField('fullDescriptionEn', e.target.value)} />
+                      <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'نص صفحة المشروع (إنجليزي) — اختياري' : 'Project page text (EN) — optional'}</label>
+                      <textarea rows="5" placeholder="A paragraph or two: the problem, what we built, the outcome..." dir="ltr" className={`${inputCls} resize-none font-english`} value={formData.bodyEn} onChange={e => setField('bodyEn', e.target.value)} />
                     </div>
-                  </div>
-                </div>
-
-                {/* Section 3: Features */}
-                <div className="space-y-4">
-                  <SectionLabel>{ar ? 'المميزات (سطر لكل ميزة)' : 'Features (one per line)'}</SectionLabel>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'المميزات (عربي)' : 'Features (AR)'}</label>
-                      <textarea rows="5" placeholder={'إدارة المستخدمين\nتتبع المشاريع\nتقارير فورية'} dir="rtl" className={`${inputCls} resize-none`} value={joinFeaturesText(formData.featuresAr)} onChange={e => setField('featuresAr', parseFeaturesText(e.target.value))} />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'المميزات (إنجليزي)' : 'Features (EN)'}</label>
-                      <textarea rows="5" placeholder={'User management\nProject tracking\nReal-time reports'} dir="ltr" className={`${inputCls} resize-none font-english`} value={joinFeaturesText(formData.featuresEn)} onChange={e => setField('featuresEn', parseFeaturesText(e.target.value))} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 4: Metrics */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-gray-200 dark:border-white/10">
-                    <span className="text-xs font-bold text-blue-500 uppercase tracking-wider">
-                      {ar ? 'المقاييس (حتى 5)' : 'Metrics (up to 5)'}
-                    </span>
-                    <button type="button" onClick={addMetric} disabled={formData.metrics.length >= 5}
-                      className="text-xs text-blue-500 hover:text-blue-400 flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                      <Plus size={14} /> {ar ? 'إضافة مقياس' : 'Add Metric'}
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-12 gap-2 text-[10px] text-gray-400 dark:text-slate-500 px-1 mb-1">
-                    <div className="col-span-2">{ar ? 'القيمة' : 'Value'}</div>
-                    <div className="col-span-4">{ar ? 'التسمية (عربي)' : 'Label (AR)'}</div>
-                    <div className="col-span-5">{ar ? 'التسمية (إنجليزي)' : 'Label (EN)'}</div>
-                  </div>
-                  <div className="space-y-2">
-                    {formData.metrics.map((metric, i) => (
-                      <MetricRow key={i} metric={metric} index={i} onChange={handleMetricChange} onRemove={removeMetric} />
-                    ))}
                   </div>
                 </div>
 
                 {/* Section 5: Tech Stack */}
                 <div className="space-y-4">
-                  <SectionLabel>{ar ? 'التقنيات المستخدمة' : 'Technologies Used'}</SectionLabel>
+                  <SectionLabel>{formData.type === 'infra' ? (ar ? 'المعدات والتقنيات' : 'Equipment & technology') : usesCreativeTools(formData.type) ? (ar ? 'الأدوات المستخدمة' : 'Tools used') : (ar ? 'التقنيات المستخدمة' : 'Technologies Used')}</SectionLabel>
                   <div>
                     <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">
-                      {ar ? 'قائمة التقنيات (مفصولة بفاصلة) — تظهر كوسوم في صفحة التفاصيل' : 'Technologies (comma-separated) — shown as badges on detail page'}
+                      {ar ? 'اختر ما استُخدم — يظهر كوسوم على بطاقة العمل' : 'Pick what was used — shown as badges on the card'}
                     </label>
-                    <input
-                      placeholder="React, Laravel, MySQL, Docker..."
-                      dir="ltr"
-                      className={`${inputCls} font-english`}
-                      value={(formData.technologies || []).join(', ')}
-                      onChange={e => setField('technologies', e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                    <TechPicker
+                      value={formData.technologies}
+                      onChange={list => setField('technologies', list)}
+                      lang={lang}
+                      creative={usesCreativeTools(formData.type)}
                     />
                   </div>
                   {(formData.technologies || []).length > 0 && (
@@ -440,10 +569,6 @@ const ManageProjects = () => {
                       ))}
                     </div>
                   )}
-                  <div>
-                    <label className="block text-xs text-gray-500 dark:text-slate-400 mb-1.5">{ar ? 'المكدس التقني (نص مختصر للجدول)' : 'Tech Stack (short text for table)'}</label>
-                    <input placeholder="React, Laravel, MySQL" dir="ltr" className={`${inputCls} font-english`} value={formData.stack} onChange={e => setField('stack', e.target.value)} />
-                  </div>
                 </div>
 
               </form>
@@ -466,7 +591,7 @@ const ManageProjects = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsDeleteModalOpen(false)} className="absolute inset-0 bg-[#050810]/80 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-              className="relative w-full max-w-sm bg-white dark:bg-[#111827] border border-red-500/20 rounded-2xl p-6 text-center shadow-2xl"
+              className="relative w-full max-w-sm bg-white dark:bg-[#111827] border border-red-500/20 rounded-2xl p-6 text-center shadow-2xl max-h-full overflow-y-auto"
             >
               <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20"><AlertTriangle size={28} /></div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{ar ? 'تأكيد الحذف' : 'Confirm Delete'}</h3>

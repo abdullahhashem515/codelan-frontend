@@ -5,7 +5,7 @@ try {
   const _l = localStorage.getItem('lang') || 'ar';
   document.documentElement.lang = _l;
   document.documentElement.dir = _l === 'ar' ? 'rtl' : 'ltr';
-} catch {}
+} catch { /* no document (SSR/tests) — the language still applies in memory */ }
 
 const LangContext = createContext(null);
 

@@ -1,10 +1,14 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Clock, Eye, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useLang } from '../context/LangContext';
 import { apiGetPosts } from '../services/api';
 import { fadeUp, staggerContainer } from '../utils/motion';
 import DynamicIcon from '../components/DynamicIcon';
 import TiltCard from '../components/TiltCard';
+import { readingMinutes, deriveExcerpt } from '../utils/articleText';
+import { safeImg } from '../utils/safeUrl';
 
 const LABELS = {
   ar: { title: 'المدونة التقنية', sub: 'مقالات تقنية متعمقة من تجاربنا الميدانية — نشارك ما تعلمناه لنرفع مستوى المجتمع التقني.', readMore: 'اقرأ المزيد' },
@@ -20,11 +24,7 @@ const CARD_STYLES = [
   { icon: '🛠️', gradient: 'from-[#1a0a0a] to-[#3a1515]' },
 ];
 
-const FALLBACK = [
-  { id: 1, category: 'هندسة البرمجيات', categoryEn: 'Software Engineering', title: 'بناء APIs قابلة للتوسع: دروس من الميدان', titleEn: 'Building Scalable APIs: Lessons from the Field', desc: 'كيف صممنا API تتعامل مع 10,000 طلب/ثانية في نظام مالي، وما تعلمناه في الطريق.', descEn: 'How we designed an API handling 10,000 req/sec in a financial system, and what we learned.', time: '8 دقائق', timeEn: '8 min read', date: '', icon: '🏗️', gradient: 'from-[#0a1628] to-[#162a4a]' },
-  { id: 2, category: 'الأمن السيبراني', categoryEn: 'Cybersecurity', title: 'أكثر 5 ثغرات شيوعاً في تطبيقات الويب', titleEn: 'Top 5 Most Common Web App Vulnerabilities', desc: 'دليل عملي لحماية تطبيقك من الهجمات الأكثر شيوعاً مثل XSS و SQL Injection.', descEn: 'A practical guide to protecting your app from common attacks like XSS and SQL Injection.', time: '12 دقيقة', timeEn: '12 min read', date: '', icon: '🔒', gradient: 'from-[#1a0028] to-[#2d1545]' },
-  { id: 3, category: 'الأداء والتحسين', categoryEn: 'Performance', title: 'React Performance: من 4 ثوانٍ إلى 0.8 ثانية', titleEn: 'React Performance: From 4s to 0.8s', desc: 'رحلة تحسين أداء تطبيق React ضخم: التقنيات، الأدوات المستخدمة، وكيفية التعامل مع Re-renders.', descEn: 'The journey of optimizing a massive React app: techniques, tools, and handling re-renders.', time: '10 دقائق', timeEn: '10 min read', date: '', icon: '⚡', gradient: 'from-[#001a0a] to-[#0a3020]' },
-];
+const FALLBACK = [];
 
 const formatDate = (dateStr, ar) => {
   if (!dateStr) return '';
@@ -36,17 +36,26 @@ const formatDate = (dateStr, ar) => {
 const fromApi = (p, idx) => {
   const style = CARD_STYLES[idx % CARD_STYLES.length];
   const dateStr = p.published_at ?? p.date ?? p.created_at ?? '';
+  const contentAr = p.content ?? '';
+  const contentEn = p.content_en ?? p.content ?? '';
   return {
     id:         p.id,
-    category:   p.category    ?? '',
-    categoryEn: p.category_en ?? p.category ?? '',
+    // The single-post route keys on the slug; without one the card has nowhere
+    // to go, so it renders as plain text rather than a broken link.
+    slug:       p.slug ?? '',
     title:      p.title       ?? '',
     titleEn:    p.title_en    ?? p.title ?? '',
-    desc:       p.excerpt     ?? p.description ?? '',
-    descEn:     p.excerpt_en  ?? p.description_en ?? p.excerpt ?? p.description ?? '',
-    time:       p.reading_time ? `${p.reading_time} دقيقة` : '',
-    timeEn:     p.reading_time ? `${p.reading_time} min read` : '',
+    // Every post currently published leaves the excerpt empty, which used to
+    // render the card with a blank body. Fall back to the opening prose.
+    desc:       deriveExcerpt(p.excerpt,    contentAr),
+    descEn:     deriveExcerpt(p.excerpt_en ?? p.excerpt, contentEn),
+    // There is no reading_time column — estimate it from the body instead of
+    // leaving the slot empty.
+    minutes:    readingMinutes(contentAr, true),
+    minutesEn:  readingMinutes(contentEn, false),
+    views:      Number(p.views) || 0,
     date:       dateStr,
+    image:      safeImg(p.image_url),
     icon:       p.icon ?? style.icon,
     gradient:   style.gradient,
   };
@@ -68,16 +77,27 @@ const Blog = () => {
   const lbl = LABELS[lang];
   const ar = lang === 'ar';
 
+  // Nothing real to show yet — keep the anchor target, show no content.
+  if (posts.length === 0) return <section id="blog" />;
+
   return (
-    <section id="blog" className="py-24 px-6 max-w-7xl mx-auto relative z-10">
+    // داكن دائماً، كالمشاريع والشهادات: إخفاء الشهادات يترك المنهجية والمدونة
+    // والتواصل ثلاثة أقسام فاتحة متتالية، وهو أطول تتابع رتيب يبقى على الصفحة.
+    <section id="blog" data-header="dark" className="relative py-24 px-6 overflow-hidden z-10" style={{ backgroundColor: '#0a0f1e' }}>
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-[60%] pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse 55% 100% at 50% 0%, rgba(26,127,255,0.10), transparent 70%)' }}
+      />
+      <div className="relative max-w-7xl mx-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         className="text-center flex flex-col items-center mb-16"
       >
-        <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight">{lbl.title}</h2>
-        <p className="text-gray-600 dark:text-slate-300 text-lg max-w-2xl mx-auto leading-relaxed">{lbl.sub}</p>
+        <h2 className="text-3xl md:text-5xl font-bold mb-4 tracking-tight text-white">{lbl.title}</h2>
+        <p className="text-slate-400 text-lg max-w-2xl mx-auto leading-relaxed">{lbl.sub}</p>
       </motion.div>
 
       <motion.div
@@ -88,52 +108,91 @@ const Blog = () => {
         className="flex flex-wrap justify-center gap-8"
       >
         {posts.map((post, idx) => {
-          const displayCategory = ar ? post.category : (post.categoryEn || post.category);
-          const displayTitle    = ar ? post.title    : (post.titleEn    || post.title);
-          const displayDesc     = ar ? post.desc     : (post.descEn     || post.desc);
-          const displayTime     = ar ? post.time     : (post.timeEn     || post.time);
-          const displayDate     = formatDate(post.date, ar);
-          return (
-            <TiltCard
-              key={post.id ?? idx}
-              variants={fadeUp}
-              className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)] flex flex-col bg-white dark:bg-[#111827] border border-gray-200 dark:border-brand-gray/15 rounded-2xl overflow-hidden group hover:border-gray-400 dark:hover:border-brand-gray/40 transition-[transform,border-color] duration-300 hover:-translate-y-2 shadow-sm hover:shadow-[0_20px_40px_rgba(0,0,0,0.12)] dark:shadow-none dark:hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] cursor-pointer"
-            >
+          const displayTitle = ar ? post.title : (post.titleEn || post.title);
+          const displayDesc  = ar ? post.desc  : (post.descEn  || post.desc);
+          const minutes      = ar ? post.minutes : (post.minutesEn || post.minutes);
+          const displayDate  = formatDate(post.date, ar);
+          const Arrow        = ar ? ArrowLeft : ArrowRight;
+
+          const card = (
+            <>
               <div className={`h-48 w-full bg-gradient-to-br ${post.gradient} flex items-center justify-center relative overflow-hidden shrink-0`}>
-                <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-[background-color] duration-300"></div>
-                <span aria-hidden="true" className="relative z-10 text-white/90 group-hover:scale-110 transition-transform duration-500">
-                  <DynamicIcon emoji={post.icon} size={40} />
-                </span>
+                {post.image ? (
+                  <img src={post.image} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                ) : (
+                  <>
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-[background-color] duration-300" />
+                    <span aria-hidden="true" className="relative z-10 text-white/90 group-hover:scale-110 transition-transform duration-500">
+                      <DynamicIcon emoji={post.icon} size={40} />
+                    </span>
+                  </>
+                )}
               </div>
 
               <div className="p-6 flex flex-col flex-grow">
-                <div>
-                  <span className="inline-block font-mono text-[10px] text-red-400 bg-red-500/10 px-2 py-1 rounded mb-4 uppercase tracking-wider">
-                    {displayCategory}
-                  </span>
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-3 line-clamp-2 group-hover:text-gray-700 dark:group-hover:text-brand-gray transition-colors leading-snug">
-                    {displayTitle}
-                  </h3>
-                  <p className="text-gray-600 dark:text-slate-300 text-sm leading-relaxed mb-6 line-clamp-3">
+                <h3 className="text-lg font-bold text-white mb-3 line-clamp-2 group-hover:text-blue-400 transition-colors ltr:leading-snug rtl:leading-[1.5]">
+                  {displayTitle}
+                </h3>
+                {displayDesc && (
+                  <p className="text-slate-400 text-sm leading-relaxed mb-6 line-clamp-3">
                     {displayDesc}
                   </p>
-                </div>
+                )}
 
-                <div className="mt-auto pt-4 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300 font-mono">
-                    {displayTime && <><span aria-hidden="true">⏱️</span><span>{displayTime}</span></>}
-                    {displayTime && displayDate && <span>·</span>}
+                <div className="mt-auto pt-4 border-t border-white/10 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 text-xs text-slate-500 font-mono">
                     {displayDate && <span>{displayDate}</span>}
+                    {minutes > 0 && (
+                      <span className="inline-flex items-center gap-1"><Clock size={12} aria-hidden="true" />{minutes}{ar ? ' د' : 'm'}</span>
+                    )}
+                    {post.views > 0 && (
+                      <span className="inline-flex items-center gap-1"><Eye size={12} aria-hidden="true" />{post.views}</span>
+                    )}
                   </div>
-                  <span className={`text-sm font-bold text-gray-700 dark:text-brand-gray md:opacity-0 md:group-hover:opacity-100 transition-[transform,opacity] duration-300 ${ar ? 'md:-translate-x-2 md:group-hover:translate-x-0' : 'md:translate-x-2 md:group-hover:translate-x-0'}`}>
-                    {lbl.readMore} {ar ? '←' : '→'}
-                  </span>
+                  {post.slug && (
+                    <span className={`shrink-0 inline-flex items-center gap-1 text-sm font-bold text-blue-600 dark:text-blue-400 transition-[transform,opacity] duration-300 md:opacity-0 md:group-hover:opacity-100 ${ar ? 'md:translate-x-2 md:group-hover:translate-x-0' : 'md:-translate-x-2 md:group-hover:translate-x-0'}`}>
+                      {lbl.readMore}
+                      <Arrow size={14} aria-hidden="true" />
+                    </span>
+                  )}
                 </div>
               </div>
-            </TiltCard>
+            </>
+          );
+
+          // The card used to carry cursor-pointer and a "Read more" affordance
+          // with no handler and no href at all — it looked clickable and did
+          // nothing. It is a real <a> rather than a role="link" div because an
+          // article has to be crawlable. A post with no slug renders as a plain
+          // card instead of pretending to be a link.
+          const shell = 'grow basis-[320px] max-w-[400px] flex';
+          const inner = 'w-full flex flex-col bg-white/[0.03] border border-white/10 rounded-2xl overflow-hidden transition-[transform,border-color] duration-300';
+
+          if (!post.slug) {
+            return (
+              <TiltCard key={post.id ?? idx} variants={fadeUp} className={`${shell} ${inner} group`}>
+                {card}
+              </TiltCard>
+            );
+          }
+
+          return (
+            <Link
+              key={post.id ?? idx}
+              to={`/blog/${post.slug}`}
+              className={`${shell} group rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0b1120]`}
+            >
+              <TiltCard
+                variants={fadeUp}
+                className={`${inner} group-hover:border-blue-400 dark:group-hover:border-blue-500/40 group-hover:-translate-y-2 group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.12)] dark:group-hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)]`}
+              >
+                {card}
+              </TiltCard>
+            </Link>
           );
         })}
       </motion.div>
+      </div>
     </section>
   );
 };

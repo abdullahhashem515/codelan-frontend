@@ -1,12 +1,10 @@
 // src/pages/admin/ManageAchievements.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, X } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
 import { apiGetAchievements, apiCreateAchievement, apiUpdateAchievement, apiDeleteAchievement } from '../../services/api';
-import DynamicIcon from '../../components/DynamicIcon';
-import IconPicker from '../../components/IconPicker';
 
 // ─── Shared style ─────────────────────────────────────────────────────────────
 
@@ -29,7 +27,6 @@ const toForm = (a) => ({
   value:      String(a.value ?? ''),
   unit:       a.unit       ?? '+',
   icon:       a.icon       ?? '🏆',
-  isFeatured: !!a.is_featured,
 });
 
 const toApi = (f) => ({
@@ -40,7 +37,6 @@ const toApi = (f) => ({
   value:       f.value,
   unit:        f.unit,
   icon:        f.icon,
-  is_featured: f.isFeatured,
 });
 
 const EMPTY_FORM = {
@@ -48,7 +44,6 @@ const EMPTY_FORM = {
   titleAr: '',  titleEn: '',
   subtitleAr: '', subtitleEn: '',
   value: '', unit: '+', icon: '🏆',
-  isFeatured: false,
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -118,16 +113,6 @@ const ManageAchievements = () => {
     }
   };
 
-  const toggleFeatured = async (id) => {
-    const item = achievements.find(a => a.id === id);
-    if (!item) return;
-    const updated = { ...item, isFeatured: !item.isFeatured };
-    setAchievements(prev => prev.map(a => a.id === id ? updated : a));
-    try { await apiUpdateAchievement(id, toApi(updated)); } catch {
-      setAchievements(prev => prev.map(a => a.id === id ? item : a));
-    }
-  };
-
   const swap = (arr, i, j) => {
     const next = [...arr];
     [next[i], next[j]] = [next[j], next[i]];
@@ -192,29 +177,11 @@ const ManageAchievements = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.96 }}
                 transition={{ layout: { duration: 0.2 } }}
-                className={`bg-white dark:bg-[#0a0f1e] border rounded-2xl p-6 flex flex-col gap-4
-                            transition-opacity relative shadow-sm dark:shadow-none ${
-                              item.isFeatured
-                                ? 'border-yellow-500/20'
-                                : 'border-gray-200 dark:border-white/10'
-                            }`}
+                className="bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl p-6 flex flex-col gap-4
+                            transition-opacity relative shadow-sm dark:shadow-none"
               >
-                {/* Featured badge */}
-                {item.isFeatured && (
-                  <span className="absolute top-4 end-4 flex items-center gap-1
-                                   bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 dark:text-yellow-400
-                                   text-xs px-2.5 py-1 rounded-full">
-                    <Star size={10} className="fill-yellow-500 dark:fill-yellow-400" />
-                    {ar ? 'مميز' : 'Featured'}
-                  </span>
-                )}
-
-                {/* Icon + Value */}
+                {/* Value — as it appears in the hero */}
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-[#111827] border border-gray-200 dark:border-white/10
-                                  flex items-center justify-center text-blue-500 dark:text-blue-400 flex-shrink-0">
-                    <DynamicIcon emoji={item.icon} size={28} />
-                  </div>
                   <div>
                     <div className="text-4xl font-bold font-mono text-gray-900 dark:text-white leading-none">
                       {item.value}
@@ -255,19 +222,6 @@ const ManageAchievements = () => {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Featured toggle */}
-                    <button
-                      onClick={() => toggleFeatured(item.id)}
-                      title={item.isFeatured ? (ar ? 'إلغاء التمييز' : 'Unfeature') : (ar ? 'تمييز' : 'Feature')}
-                      className={`p-2.5 rounded-xl border transition-colors ${
-                        item.isFeatured
-                          ? 'bg-yellow-500/10 text-yellow-500 dark:text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/20'
-                          : 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-slate-500 border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10'
-                      }`}
-                    >
-                      <Star size={16} className={item.isFeatured ? 'fill-yellow-500 dark:fill-yellow-400' : ''} />
-                    </button>
-
                     {/* Edit */}
                     <button
                       onClick={() => openEdit(item)}
@@ -330,7 +284,7 @@ const ManageAchievements = () => {
                 exit={{ opacity: 0, scale: 0.95, y: 16 }}
                 transition={{ duration: 0.2 }}
                 className="w-full max-w-xl bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10
-                           rounded-3xl shadow-2xl p-6 md:p-8 pointer-events-auto
+                           rounded-3xl shadow-2xl p-6 md:p-8 pointer-events-auto max-h-full overflow-y-auto
                            max-h-[90vh] overflow-y-auto"
               >
                 {/* Modal header */}
@@ -408,8 +362,8 @@ const ManageAchievements = () => {
                     </div>
                   </div>
 
-                  {/* Value / Unit / Icon */}
-                  <div className="grid grid-cols-3 gap-4">
+                  {/* Value / Unit */}
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-gray-500 dark:text-slate-400 text-xs mb-1.5 flex items-center gap-1 block">
                         {ar ? 'القيمة' : 'Value'}
@@ -435,38 +389,6 @@ const ManageAchievements = () => {
                         dir="ltr"
                       />
                     </div>
-                    <div>
-                      <label className="text-gray-500 dark:text-slate-400 text-xs mb-1.5 block">
-                        {ar ? 'الأيقونة' : 'Icon'}
-                      </label>
-                      <IconPicker lang={lang} value={formData.icon} onChange={(emoji) => updateForm('icon', emoji)} />
-                    </div>
-                  </div>
-
-                  {/* Featured toggle */}
-                  <div className="flex items-center justify-between bg-gray-50 dark:bg-[#111827] border border-gray-200 dark:border-white/10 rounded-xl p-4">
-                    <div>
-                      <p className="text-gray-900 dark:text-white text-sm font-medium flex items-center gap-2">
-                        <Star size={14} className="text-yellow-500 dark:text-yellow-400" />
-                        {ar ? 'إنجاز مميز' : 'Featured Achievement'}
-                      </p>
-                      <p className="text-gray-400 dark:text-slate-500 text-xs mt-0.5">
-                        {ar ? 'يظهر بشكل بارز في الصفحة' : 'Highlighted prominently on the page'}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => updateForm('isFeatured', !formData.isFeatured)}
-                      className={`w-12 h-6 rounded-full relative transition-colors duration-200 ${
-                        formData.isFeatured ? 'bg-yellow-500' : 'bg-gray-300 dark:bg-slate-700'
-                      }`}
-                    >
-                      <motion.div
-                        animate={{ x: formData.isFeatured ? 24 : 2 }}
-                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        className="absolute top-1 w-4 h-4 bg-white rounded-full shadow"
-                      />
-                    </button>
                   </div>
 
                   {/* Buttons */}

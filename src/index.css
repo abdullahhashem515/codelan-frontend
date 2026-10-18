@@ -2,157 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── خطوط ثابتة مضمّنة محلياً (public/fonts) — لا طلبات شبكة خارجية ────────── */
+/* ── خطوط متغيّرة (variable) مضمّنة محلياً — لا طلبات شبكة خارجية ─────────────
+   كل عائلة = ملف واحد يحوي كل الأوزان (fvar/gvar). سابقاً كان لكل وزن ملف
+   منفصل، لكن الملفات كانت متطابقة بايت-ببايت (نفس الخط المتغيّر مكرر 5 مرات)،
+   فكان المتصفح ينزّل نفس الخط عدة مرات لأن الروابط مختلفة. الآن قاعدة واحدة
+   بمدى أوزان (font-weight: 300 700) والمتصفح يشتق كل الأوزان من ملف واحد. */
 @font-face {
   font-family: 'Alexandria';
   font-style: normal;
-  font-weight: 300;
+  font-weight: 300 700;
   font-display: swap;
-  src: url('/fonts/alexandria-300-arabic.woff2') format('woff2');
+  src: url('/fonts/alexandria-arabic.woff2') format('woff2');
   unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
 }
 
 @font-face {
   font-family: 'Alexandria';
   font-style: normal;
-  font-weight: 300;
+  font-weight: 300 700;
   font-display: swap;
-  src: url('/fonts/alexandria-300-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'Alexandria';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/alexandria-400-arabic.woff2') format('woff2');
-  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
-}
-
-@font-face {
-  font-family: 'Alexandria';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/alexandria-400-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'Alexandria';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/alexandria-500-arabic.woff2') format('woff2');
-  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
-}
-
-@font-face {
-  font-family: 'Alexandria';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/alexandria-500-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'Alexandria';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/fonts/alexandria-600-arabic.woff2') format('woff2');
-  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
-}
-
-@font-face {
-  font-family: 'Alexandria';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/fonts/alexandria-600-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'Alexandria';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/alexandria-700-arabic.woff2') format('woff2');
-  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
-}
-
-@font-face {
-  font-family: 'Alexandria';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/alexandria-700-latin.woff2') format('woff2');
+  src: url('/fonts/alexandria-latin.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
   font-family: 'Geist';
   font-style: normal;
-  font-weight: 300;
+  font-weight: 300 700;
   font-display: swap;
-  src: url('/fonts/geist-300-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'Geist';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('/fonts/geist-400-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'Geist';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/geist-500-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'Geist';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('/fonts/geist-600-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'Geist';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('/fonts/geist-700-latin.woff2') format('woff2');
+  src: url('/fonts/geist-latin.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
   font-family: 'JetBrains Mono';
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 500;
   font-display: swap;
-  src: url('/fonts/jetbrains-mono-400-latin.woff2') format('woff2');
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'JetBrains Mono';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('/fonts/jetbrains-mono-500-latin.woff2') format('woff2');
+  src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
@@ -183,7 +70,9 @@
     background-color: var(--bg);
     color: var(--white);
     font-family: var(--font-ar);
-    overflow-x: hidden;
+    /* clip لا hidden: overflow-x:hidden يجعل العنصر حاوية تمرير
+       فتتعطل position:sticky داخله. clip يقصّ أفقياً دون ذلك. */
+    overflow-x: clip;
     line-height: 1.7;
   }
   
@@ -192,18 +81,27 @@
   }
 }
 
-/* Continuous glow/breathing pulse on the header site name — plain CSS on
-   purpose: it runs the instant the element exists in the DOM and never
-   depends on React mount timing, remounts, or JS animation libraries. */
+/* Continuous breathing pulse on the header site name — plain CSS on purpose:
+   it runs the instant the element exists in the DOM and never depends on React
+   mount timing, remounts, or JS animation libraries.
+   Animates only transform + opacity so the browser can composite it on the GPU;
+   the previous drop-shadow() keyframe forced a repaint every frame (Lighthouse
+   flagged it under "non-composited animations"). */
 @keyframes name-pulse {
-  0%, 100% {
-    transform: scale(1);
-    filter: drop-shadow(0 0 0px rgba(59, 130, 246, 0));
-  }
-  50% {
-    transform: scale(1.05);
-    filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.6));
-  }
+  0%, 100% { transform: scale(1); opacity: 0.92; }
+  50%      { transform: scale(1.05); opacity: 1; }
+}
+
+/* The signal circling the hero's main call to action — a packet going round a
+   ring, in the logo's blue-to-red. A rotating transform only, so it stays on
+   the compositor. */
+@keyframes hint-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(5px); }
+}
+
+@keyframes beam-spin {
+  to { transform: rotate(1turn); }
 }
 
 /* يعطّل التلاشي التلقائي الافتراضي لـ View Transitions API، بحيث تظهر فقط

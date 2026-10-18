@@ -1,10 +1,10 @@
 // src/pages/admin/ManageTestimonials.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
 import { Plus, Pencil, Trash2, X, Star, Eye, EyeOff, MessageSquare, Building2 } from 'lucide-react';
 import { useLang } from '../../context/LangContext';
-import { apiGetTestimonials, apiCreateTestimonial, apiUpdateTestimonial, apiDeleteTestimonial } from '../../services/api';
+import { apiGetAllTestimonials, apiCreateTestimonial, apiUpdateTestimonial, apiDeleteTestimonial } from '../../services/api';
 
 // ─── Shared Style ─────────────────────────────────────────────────────────
 const inputCls =
@@ -57,7 +57,7 @@ const ManageTestimonials = () => {
   });
 
   useEffect(() => {
-    apiGetTestimonials()
+    apiGetAllTestimonials()
       .then(res => setTestimonials((res.data ?? []).map(toForm)))
       .catch(() => setTestimonials([]))
       .finally(() => setLoading(false));
@@ -222,7 +222,7 @@ const ManageTestimonials = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-2xl bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl my-8"
+              className="w-full max-w-2xl bg-white dark:bg-[#0a0f1e] border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl max-h-full overflow-y-auto"
             >
               <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-white/5 bg-gray-50 dark:bg-[#111827]">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -266,7 +266,7 @@ const ManageTestimonials = () => {
                   </div>
                   <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-500 dark:text-slate-300 mb-2">{ar ? 'اسم الشركة (اختياري)' : 'Company Name (Optional)'}</label>
-                    <input type="text" value={formData.company} onChange={(e) => setFormData({...formData, company: e.target.value})} className={inputCls} placeholder="e.g. CodeLAN" />
+                    <input type="text" value={formData.company} onChange={(e) => setFormData({...formData, company: e.target.value})} className={inputCls} placeholder="e.g. Codelanco" />
                   </div>
                 </div>
 
@@ -312,7 +312,7 @@ const ManageTestimonials = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-sm bg-white dark:bg-[#0a0f1e] border border-red-500/20 rounded-2xl shadow-2xl p-6 text-center"
+              className="w-full max-w-sm bg-white dark:bg-[#0a0f1e] border border-red-500/20 rounded-2xl shadow-2xl p-6 text-center max-h-full overflow-y-auto"
             >
               <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mx-auto mb-4">
                 <Trash2 size={32} />

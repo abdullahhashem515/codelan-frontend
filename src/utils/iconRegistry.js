@@ -1,0 +1,80 @@
+// GENERATED — every icon a stored `icon` value can name, imported explicitly.
+//
+// This replaced `import * as LucideIcons from 'lucide-react'` in iconMap.js,
+// which pulled the whole icon library (≈740 KB) into the bundle just to look a
+// name up at runtime. It also blocked merging icons into one chunk: one file
+// of "all icons" would have been that whole library on the first page load.
+//
+// The set is the admin icon picker (utils/iconChoices.js) plus names already
+// present in the live data. Anything else falls back to Sparkles — the picker
+// cannot produce anything else. Regenerate after editing the picker:
+//   every name in ICON_NAMES from iconChoices.js, plus: message-circle,
+//   pen-tool, check-square, users, code-2, sparkles.
+import {
+  Antenna, Award, Briefcase, Brush, Bug, Cable, CalendarDays, Camera, CheckCircle, CheckSquare, Clapperboard, Clock, Cloud, Code, Code2, CodeXml, Cpu, Database, FileText, Film, GitBranch, Globe, Handshake, HardDrive, Headphones, Heart, Image, LayoutDashboard, LifeBuoy, Lightbulb, Lock, Mail, MapPin, Megaphone, MessageCircle, Network, Package, Palette, PenTool, Phone, PhoneCall, Radio, Rocket, Router, Server, Settings, Share2, Shield, ShieldCheck, Smartphone, Sparkles, Star, Tablet, Target, Terminal, TrendingUp, UserCheck, Users, Video, Wifi, Wrench, Zap,
+} from 'lucide-react';
+
+export const ICONS_BY_NAME = {
+  'antenna': Antenna,
+  'award': Award,
+  'briefcase': Briefcase,
+  'brush': Brush,
+  'bug': Bug,
+  'cable': Cable,
+  'calendar-days': CalendarDays,
+  'camera': Camera,
+  'check-circle': CheckCircle,
+  'check-square': CheckSquare,
+  'clapperboard': Clapperboard,
+  'clock': Clock,
+  'cloud': Cloud,
+  'code': Code,
+  'code-2': Code2,
+  'code-xml': CodeXml,
+  'cpu': Cpu,
+  'database': Database,
+  'file-text': FileText,
+  'film': Film,
+  'git-branch': GitBranch,
+  'globe': Globe,
+  'handshake': Handshake,
+  'hard-drive': HardDrive,
+  'headphones': Headphones,
+  'heart': Heart,
+  'image': Image,
+  'layout-dashboard': LayoutDashboard,
+  'life-buoy': LifeBuoy,
+  'lightbulb': Lightbulb,
+  'lock': Lock,
+  'mail': Mail,
+  'map-pin': MapPin,
+  'megaphone': Megaphone,
+  'message-circle': MessageCircle,
+  'network': Network,
+  'package': Package,
+  'palette': Palette,
+  'pen-tool': PenTool,
+  'phone': Phone,
+  'phone-call': PhoneCall,
+  'radio': Radio,
+  'rocket': Rocket,
+  'router': Router,
+  'server': Server,
+  'settings': Settings,
+  'share-2': Share2,
+  'shield': Shield,
+  'shield-check': ShieldCheck,
+  'smartphone': Smartphone,
+  'sparkles': Sparkles,
+  'star': Star,
+  'tablet': Tablet,
+  'target': Target,
+  'terminal': Terminal,
+  'trending-up': TrendingUp,
+  'user-check': UserCheck,
+  'users': Users,
+  'video': Video,
+  'wifi': Wifi,
+  'wrench': Wrench,
+  'zap': Zap,
+};

@@ -5,9 +5,7 @@ export const SITE_NAME = { ar: 'كودلانكو', en: 'Codelanco' };
 
 export const NAV_LINKS = [
   { id: '#services',     ar: 'الخدمات',    en: 'Services'     },
-  { id: '#portfolio',    ar: 'المشاريع',   en: 'Portfolio'    },
-  { id: '#techstack',    ar: 'التقنيات',   en: 'Tech Stack'   },
-  { id: '#achievements', ar: 'الإنجازات',  en: 'Achievements' },
+  { id: '#portfolio',    ar: 'أعمالنا',    en: 'Our Work'     },
   { id: '#blog',         ar: 'المدونة',    en: 'Blog'         },
   { id: '#contact',      ar: 'تواصل معنا', en: 'Contact'      },
 ];
